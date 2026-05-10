@@ -1,0 +1,107 @@
+ 
+[ {
+    "olt_hostname": "RRDMDGLXOLT001",
+    "olt_ip_address": "172.26.8.118",
+    "olt_eth_port": "ETH-1-3-1",
+    "gp_router_hostname": "",
+    "gp_router_ip": "",
+    "gp_router_interface": "",
+    "mandal_router_hostname": "RRDMDGLXMAR001",
+    "mandal_router_ip": "172.16.80.54",
+    "mandal_router_interface": "0/3/0",
+    "capacity": 10000,
+    "admin_status": "Up"
+  },
+ {
+    "olt_hostname": "SDPBJNKXOLT001",
+    "olt_ip_address": "172.26.10.206",
+    "olt_eth_port": "ETH-1-3-1",
+    "gp_router_hostname": "",
+    "gp_router_ip": "",
+    "gp_router_interface": "",
+    "mandal_router_hostname": "SDPBJNKXMAR001",
+    "mandal_router_ip": "172.16.80.100",
+    "mandal_router_interface": "0/3/0",
+    "capacity": 10000,
+    "admin_status": "Up"
+  },  {
+    "olt_hostname": "MDKYLDTXOLT001",
+    "olt_ip_address": "172.26.10.94",
+    "olt_eth_port": "ETH-1-3-2",
+    "gp_router_hostname": "",
+    "gp_router_ip": "",
+    "gp_router_interface": "",
+    "mandal_router_hostname": "MDKYLDTXMAR001",
+    "mandal_router_ip": "172.16.80.13",
+    "mandal_router_interface": "0/3/0",
+    "capacity": 10000,
+    "admin_status": "Up"
+  },
+   {
+    "olt_hostname": "SDPRIPLXOLT001",
+    "olt_ip_address": "172.26.11.18",
+    "olt_eth_port": "ETH-1-3-1",
+    "gp_router_hostname": "",
+    "gp_router_ip": "",
+    "gp_router_interface": "",
+    "mandal_router_hostname": "SDPRIPLXMAR001",
+    "mandal_router_ip": "172.16.80.12",
+    "mandal_router_interface": "0/3/0",
+    "capacity": 10000,
+    "admin_status": "Up"
+  },
+
+   {
+    "olt_hostname": "FRNRKONDOLT001",
+    "olt_ip_address": "172.26.33.214",
+    "olt_eth_port": "ETH-1-1-1",
+    "gp_router_hostname": "FRNRKONDGPR001",
+    "gp_router_ip": "172.16.0.101",
+    "gp_router_interface": "0/0/0",
+    "mandal_router_hostname": "",
+    "mandal_router_ip": "",
+    "mandal_router_interface": "",
+    "capacity": 1000,
+    "admin_status": "Up"
+  },
+  {
+    "olt_hostname": "FRNRKONDOLT001",
+    "olt_ip_address": "172.26.33.214",
+    "olt_eth_port": "ETH-1-1-3",
+    "gp_router_hostname": "FRNRKONDGPR001",
+    "gp_router_ip": "172.16.0.101",
+    "gp_router_interface": "0/0/1",
+    "mandal_router_hostname": "",
+    "mandal_router_ip": "",
+    "mandal_router_interface": "",
+    "capacity": 1000,
+    "admin_status": "Up"
+  },
+  {
+    "olt_hostname": "FRNRKONDOLT001",
+    "olt_ip_address": "172.26.33.214",
+    "olt_eth_port": "ETH-1-1-5",
+    "gp_router_hostname": "FRNRKONDGPR001",
+    "gp_router_ip": "172.16.0.101",
+    "gp_router_interface": "0/0/2",
+    "mandal_router_hostname": "",
+    "mandal_router_ip": "",
+    "mandal_router_interface": "",
+    "capacity": 1000,
+    "admin_status": "Up"
+  },{
+  "olt_hostname": "VKBKDGLXOLT001",
+  "olt_ip_address": "172.26.8.194",
+  "olt_eth_port": "ETH-1-3-1",
+  "gp_router_hostname": "",
+  "gp_router_ip": "",
+  "gp_router_interface": "",
+  "mandal_router_hostname": "VKBKDGLXMAR001",
+  "mandal_router_ip": "172.16.80.148",
+  "mandal_router_interface": "0/3/0",
+  "capacity": 10000,
+  "admin_status": "Up"
+}
+]
+
+ 

@@ -1,0 +1,108 @@
+/* src/components/FiberDeviceNode.css */
+.fiber-node {
+  background: #23303D;
+  border: 2px solid #111921; /* 🔹 Fixed border color for all nodes */
+  border-radius: 10px;
+  padding: 14px;
+  min-width: 160px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  cursor: grab;
+  color: #FFFFFF;
+  position: relative;
+  touch-action: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fiber-node:hover {
+  border-color: #2D3B48; /* Slightly lighter on hover for feedback */
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+/* ✅ Unified selected state - no type-specific colors */
+.fiber-node.selected {
+  border-color: #3b82f6; /* Blue highlight for selection only */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3), 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.fiber-node.dragging {
+  opacity: 0.9;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  transform: scale(1.02);
+  z-index: 1000 !important;
+}
+
+/* ✅ REMOVED: All type-specific border colors (.type-router, .type-switch, etc.) */
+
+.node-icon {
+  font-size: 28px;
+  text-align: center;
+  margin-bottom: 6px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.node-header {
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+}
+
+.node-details {
+  font-size: 12px;
+  color: #CBD5E0;
+  pointer-events: none;
+}
+
+.node-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 3px 0;
+}
+
+.node-row span {
+  color: #A0AEC0;
+  font-weight: 500;
+}
+
+.node-row.value-empty {
+  color: #718096;
+  font-style: italic;
+}
+
+/* Connection Handles */
+.react-flow__handle {
+  width: 14px;
+  height: 14px;
+  background: #4A5B6E; /* Neutral handle color */
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: crosshair;
+  transition: all 0.2s;
+}
+
+.react-flow__handle:hover {
+  background: #3b82f6;
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.react-flow__handle.source {
+  right: -7px;
+}
+
+.react-flow__handle.target {
+  left: -7px;
+}
+
+/* Prevent text selection during drag */
+.fiber-node {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
