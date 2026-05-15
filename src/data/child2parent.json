@@ -1,0 +1,366 @@
+[
+  {
+    "child_hostname": "MDKYLDTXMAR001",
+    "child_ip": "172.16.80.13",
+    "parent_hostname": "MDMDKXXXZCR001",
+    "parent_ip": "172.16.96.9",
+    "topology": "PKGA_MR24"
+  },
+  {
+    "child_hostname": "MDGLNARIGPR001",
+    "child_ip": "172.16.0.93",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP01"
+  },
+  {
+    "child_hostname": "MDGLGUDIGPR001",
+    "child_ip": "172.16.0.78",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP01"
+  },
+  {
+    "child_hostname": "MDGLAURPGPR001",
+    "child_ip": "172.16.0.69",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP01"
+  },
+  {
+    "child_hostname": "MDGLPAKEGPR001",
+    "child_ip": "172.16.0.94",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP01"
+  },
+  {
+    "child_hostname": "MDGLMADGGPR001",
+    "child_ip": "172.16.0.85",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP02"
+  },
+  {
+    "child_hostname": "MDGLIRWIGPR001",
+    "child_ip": "172.16.0.80",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP02"
+  },
+  {
+    "child_hostname": "MDGLNALPGPR001",
+    "child_ip": "172.16.0.91",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP02"
+  },
+  {
+    "child_hostname": "MDGLANNEGPR001",
+    "child_ip": "172.16.0.67",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP03"
+  },
+  {
+    "child_hostname": "MDGLARKAGPR001",
+    "child_ip": "172.16.0.68",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP03"
+  },
+  {
+    "child_hostname": "MDGLKHYBGPR001",
+    "child_ip": "172.16.0.84",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP03"
+  },
+  {
+    "child_hostname": "MDGLGIRIGPR001",
+    "child_ip": "172.16.0.77",
+    "parent_hostname": "RRDMDGLXMAR001",
+    "parent_ip": "172.16.80.54",
+    "topology": "PKGA_MADGUL-GP03"
+  },
+  {
+    "child_hostname": "BJNKBEJJGPR001",
+    "child_ip": "172.16.2.189",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP01"
+  },
+  {
+    "child_hostname": "BJNKBEGUGPR001",
+    "child_ip": "172.16.2.190",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP01"
+  },
+  {
+    "child_hostname": "BJNKTHALGPR001",
+    "child_ip": "172.16.2.191",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP01"
+  },
+  {
+    "child_hostname": "BJNKVEERGPR001",
+    "child_ip": "172.16.2.192",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP01"
+  },
+  {
+    "child_hostname": "BJNKDACHGPR001",
+    "child_ip": "172.16.2.193",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP01"
+  },
+  {
+    "child_hostname": "BJNKREGUGPR001",
+    "child_ip": "172.16.2.194",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP02"
+  },
+  {
+    "child_hostname": "BJNKCHEEGPR001",
+    "child_ip": "172.16.2.195",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP02"
+  },
+  {
+    "child_hostname": "BJNKGUNDGPR001",
+    "child_ip": "172.16.2.196",
+    "parent_hostname": "SDPBJNKXMAR001",
+    "parent_ip": "172.16.80.100",
+    "topology": "PKGA_BEJJANKI-GP02"
+  },
+  {
+    "child_hostname": "SDPBJNKXMAR001",
+    "child_ip": "172.16.80.100",
+    "parent_hostname": "MDMDKXXXZCR001",
+    "parent_ip": "172.16.96.9",
+    "topology": "PKGA_MR27"
+  },
+  {
+    "child_hostname": "RIPLGOLLGPR001",
+    "child_ip": "172.16.1.202",
+    "parent_hostname": "SDPRIPLXMAR001",
+    "parent_ip": "172.16.80.12",
+    "topology": "PKGA_RAIPOLE-GP01"
+  },
+  {
+    "child_hostname": "RIPLWADDGPR001",
+    "child_ip": "172.16.1.203",
+    "parent_hostname": "SDPRIPLXMAR001",
+    "parent_ip": "172.16.80.12",
+    "topology": "PKGA_RAIPOLE-GP01"
+  },
+  {
+    "child_hostname": "RIPLYELKGPR001",
+    "child_ip": "172.16.1.204",
+    "parent_hostname": "SDPRIPLXMAR001",
+    "parent_ip": "172.16.80.12",
+    "topology": "PKGA_RAIPOLE-GP01"
+  },
+  {
+    "child_hostname": "RIPLANKIGPR001",
+    "child_ip": "172.16.1.205",
+    "parent_hostname": "SDPRIPLXMAR001",
+    "parent_ip": "172.16.80.12",
+    "topology": "PKGA_RAIPOLE-GP01"
+  },
+  {
+    "child_hostname": "RIPLANAJGPR001",
+    "child_ip": "172.16.1.206",
+    "parent_hostname": "SDPRIPLXMAR001",
+    "parent_ip": "172.16.80.12",
+    "topology": "PKGA_RAIPOLE-GP02"
+  },
+  {
+    "child_hostname": "RIPLRAYAGPR001",
+    "child_ip": "172.16.1.207",
+    "parent_hostname": "SDPRIPLXMAR001",
+    "parent_ip": "172.16.80.12",
+    "topology": "PKGA_RAIPOLE-GP02"
+  },
+  {
+    "child_hostname": "SDPRIPLXMAR001",
+    "child_ip": "172.16.80.12",
+    "parent_hostname": "MDMDKXXXZCR001",
+    "parent_ip": "172.16.96.9",
+    "topology": "PKGA_MR24"
+  },
+  {
+    "child_hostname": "RIPLTENKGPR001",
+    "child_ip": "172.16.1.208",
+    "parent_hostname": "SDPRIPLXMAR001",
+    "parent_ip": "172.16.80.12",
+    "topology": "PKGA_RAIPOLE-GP03"
+  },
+  {
+    "child_hostname": "YLDTKUKNGPR001",
+    "child_ip": "172.16.1.182",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP01"
+  },
+  {
+    "child_hostname": "YLDTDHARGPR001",
+    "child_ip": "172.16.1.183",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP01"
+  },
+  {
+    "child_hostname": "YLDTMANEGPR001",
+    "child_ip": "172.16.1.184",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP01"
+  },
+  {
+    "child_hostname": "YLDTMANGGPR001",
+    "child_ip": "172.16.1.185",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP01"
+  },
+  {
+    "child_hostname": "YLDTYELDGPR001",
+    "child_ip": "172.16.1.186",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP02"
+  },
+  {
+    "child_hostname": "YLDTMASAGPR001",
+    "child_ip": "172.16.1.187",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP02"
+  },
+  {
+    "child_hostname": "YLDTKOPPGPR001",
+    "child_ip": "172.16.1.188",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP02"
+  },
+  {
+    "child_hostname": "YLDTUPPUGPR001",
+    "child_ip": "172.16.1.189",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP03"
+  },
+  {
+    "child_hostname": "YLDTCHERGPR001",
+    "child_ip": "172.16.1.190",
+    "parent_hostname": "MDKYLDTXMAR001",
+    "parent_ip": "172.16.80.13",
+    "topology": "PKGA_YELDURTHY-GP04"
+  },
+  {
+    "child_hostname": "FRNRKONDGPR001",
+    "child_ip": "172.16.0.101",
+    "parent_hostname": "RRDFRNRXMAR001",
+    "parent_ip": "172.16.80.60",
+    "topology": "PKGA_FAROOQNAGAR-GP01"
+  },
+  {
+    "child_hostname": "RRDFRNRXMAR001",
+    "child_ip": "172.16.80.60",
+    "parent_hostname": "MDMDKXXXZCR001",
+    "parent_ip": "172.16.96.9",
+    "topology": "PKGA_MR33"
+  },
+  {
+    "child_hostname": "KDGLKHAJGPR001",
+    "child_ip": "172.16.4.126",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP01"
+  },
+  {
+    "child_hostname": "KDGLLAXMGPR001",
+    "child_ip": "172.16.4.127",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP01"
+  },
+  {
+    "child_hostname": "KDGLHUSSGPR001",
+    "child_ip": "172.16.4.128",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP01"
+  },
+  {
+    "child_hostname": "KDGLTEKAGPR001",
+    "child_ip": "172.16.4.129",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP02"
+  },
+  {
+    "child_hostname": "KDGLRUDRGPR001",
+    "child_ip": "172.16.4.130",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP02"
+  },
+  {
+    "child_hostname": "KDGLKASTGPR001",
+    "child_ip": "172.16.4.131",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP02"
+  },
+  {
+    "child_hostname": "KDGLRAVAGPR001",
+    "child_ip": "172.16.4.132",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP02"
+  },
+  {
+    "child_hostname": "KDGLHASNGPR001",
+    "child_ip": "172.16.4.134",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP04"
+  },
+  {
+    "child_hostname": "KDGLALIKGPR001",
+    "child_ip": "172.16.4.135",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP04"
+  },
+  {
+    "child_hostname": "KDGLEKKAGPR001",
+    "child_ip": "172.16.4.136",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP04"
+  },
+  {
+    "child_hostname": "KDGLAPPAGPR001",
+    "child_ip": "172.16.4.133",
+    "parent_hostname": "VKBKDGLXMAR001",
+    "parent_ip": "172.16.80.148",
+    "topology": "PKGA_KODANGAL-GP03"
+  },
+  {
+    "child_hostname": "VKBKDGLXMAR001",
+    "child_ip": "172.16.80.148",
+    "parent_hostname": "MDMDKXXXZCR001",
+    "parent_ip": "172.16.96.9",
+    "topology": "PKGA_MR16"
+  }
+]
