@@ -1,0 +1,35 @@
+[
+  {
+    "mandal_topolgy": "PKGA_MR33",
+    "a_end_device_hostname": "RRRRDXXXZCR001",
+    "a_end_device_ip": "172.16.96.10",
+    "a_end_device_interface": "TenGigE0/5/0/0",
+    "b_end_device_hostname": "RRDFRNRXMAR001",
+    "b_end_device_ip": "172.16.80.60",
+    "b_end_device_interface": "TenGigabitEthernet0/8/0",
+    "parent_zcr_a": "MDMDKXXXZCR001",
+    "parent_zcr_b": "RRRRDXXXZCR001"
+  },
+  {
+    "mandal_topolgy": "PKGA_MR33",
+    "a_end_device_hostname": "RRDFRNRXMAR001",
+    "a_end_device_ip": "172.16.80.60",
+    "a_end_device_interface": "TenGigabitEthernet0/4/16",
+    "b_end_device_hostname": "MBMBNXXXZCR001",
+    "b_end_device_ip": "172.16.96.8",
+    "b_end_device_interface": "TenGigE0/5/0/22",
+    "parent_zcr_a": "MDMDKXXXZCR001",
+    "parent_zcr_b": "RRRRDXXXZCR001"
+  },
+  {
+    "mandal_topolgy": "PKGA_MR33",
+    "a_end_device_hostname": "RRRRDXXXZCR001",
+    "a_end_device_ip": "172.16.96.10",
+    "a_end_device_interface": "TenGigE0/5/0/32",
+    "b_end_device_hostname": "RRDADPMXMAR001",
+    "b_end_device_ip": "172.16.80.68",
+    "b_end_device_interface": "TenGigabitEthernet0/8/0",
+    "parent_zcr_a": "MDMDKXXXZCR001",
+    "parent_zcr_b": "RRRRDXXXZCR001"
+  }
+]

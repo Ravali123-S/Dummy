@@ -1,0 +1,40 @@
+ 
+[{
+    "ont_serial_no": "ALCLFBDE4188",
+    "ont_id": "ONT-1-2-16-4",
+    "olt_hostname": "RRDMDGLXOLT001",
+    "olt_ip_address": "172.26.8.118"
+  },
+  {
+    "ont_serial_no": "ALCLFBDC4FB7",
+    "ont_id": "ONT-1-2-1-2",
+    "olt_hostname": "SDPBJNKXOLT001",
+    "olt_ip_address": "172.26.10.206"
+  },
+  {
+    "ont_serial_no": "ALCLFBE50D49",
+    "ont_id": "ONT-1-2-16-1",
+    "olt_hostname": "MDKYLDTXOLT001",
+    "olt_ip_address": "172.26.10.94"
+  },
+  {
+    "ont_serial_no": "ALCLFBDC3B3B",
+    "ont_id": "ONT-1-2-2-2",
+    "olt_hostname": "SDPRIPLXOLT001",
+    "olt_ip_address": "172.26.11.18"
+  }
+, {
+    "ont_serial_no": "ALCLFBDC5014", 
+    "ont_id": "ONT-1-1-1-2",
+    "olt_hostname": "FRNRKONDOLT001",
+    "olt_ip_address": "172.26.33.214"
+  }
+   
+  ,{
+  "ont_serial_no": "ALCLB2BE3AD9",
+  "ont_id": "ONT-1-2-1-1",
+  "olt_hostname": "VKBKDGLXOLT001",
+  "olt_ip_address": "172.26.8.194"
+}
+]
+ 
