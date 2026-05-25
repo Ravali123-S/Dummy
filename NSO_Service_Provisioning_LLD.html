@@ -1,0 +1,1463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSO Service Provisioning — Low Level Design</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --blue-dark: #0A2540;
+    --blue-mid: #1C4E8C;
+    --blue-accent: #2D82E0;
+    --blue-light: #EBF4FF;
+    --teal: #0D9488;
+    --teal-light: #E6FAF8;
+    --amber: #D97706;
+    --amber-light: #FEF3C7;
+    --green: #059669;
+    --green-light: #D1FAE5;
+    --purple: #7C3AED;
+    --purple-light: #EDE9FE;
+    --red: #DC2626;
+    --red-light: #FEE2E2;
+    --gray-50: #F8FAFC;
+    --gray-100: #F1F5F9;
+    --gray-200: #E2E8F0;
+    --gray-400: #94A3B8;
+    --gray-600: #475569;
+    --gray-800: #1E293B;
+    --white: #FFFFFF;
+    --border: 1px solid #E2E8F0;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--gray-800);
+    background: var(--gray-50);
+  }
+
+  /* ── Cover ── */
+  .cover {
+    background: var(--blue-dark);
+    color: white;
+    padding: 60px 64px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: rgba(45,130,224,0.12);
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 200px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(45,130,224,0.07);
+  }
+  .cover-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--blue-accent);
+    margin-bottom: 16px;
+  }
+  .cover h1 {
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 1;
+  }
+  .cover-subtitle {
+    font-size: 16px;
+    font-weight: 300;
+    color: rgba(255,255,255,0.65);
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 1;
+  }
+  .cover-meta {
+    display: flex;
+    gap: 40px;
+    position: relative;
+    z-index: 1;
+  }
+  .cover-meta-item label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.4);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .cover-meta-item span {
+    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+  }
+
+  /* ── Layout ── */
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 40px 80px;
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: white;
+    border: var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px 36px;
+    margin: 40px 0;
+    box-shadow: var(--shadow-sm);
+  }
+  .toc-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 20px;
+  }
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 32px;
+  }
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    text-decoration: none;
+    color: var(--gray-600);
+    font-size: 13px;
+    border-bottom: 1px solid var(--gray-100);
+    transition: color 0.15s;
+  }
+  .toc-item:hover { color: var(--blue-accent); }
+  .toc-item .phase-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .toc-item .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gray-400);
+    min-width: 20px;
+  }
+
+  /* ── Phase headers ── */
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 28px 0 16px;
+    margin-top: 48px;
+    border-top: 2px solid var(--gray-200);
+  }
+  .phase-header:first-of-type { margin-top: 24px; }
+  .phase-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .phase-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--blue-dark);
+  }
+  .phase-desc {
+    font-size: 13px;
+    color: var(--gray-400);
+    margin-left: auto;
+    text-align: right;
+  }
+
+  /* ── Step cards ── */
+  .step-card {
+    background: white;
+    border: var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+  .step-card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: var(--border);
+    background: var(--gray-50);
+  }
+  .step-num-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+    background: var(--blue-mid);
+    border-radius: 6px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+  }
+  .step-card-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-800);
+    flex: 1;
+  }
+  .yang-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .yang-service { background: var(--purple-light); color: var(--purple); }
+  .yang-ned { background: var(--teal-light); color: var(--teal); }
+  .yang-both { background: var(--amber-light); color: var(--amber); }
+  .yang-none { background: var(--gray-100); color: var(--gray-600); }
+
+  .step-card-body {
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .step-card-body.full { grid-template-columns: 1fr; }
+
+  .step-what h4, .step-example h4, .step-why h4 {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 8px;
+  }
+  .step-what p, .step-why p {
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--gray-600);
+  }
+
+  /* Example box */
+  .example-box {
+    background: var(--gray-50);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .example-box .label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 8px;
+  }
+  .example-box .input-line {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--blue-mid);
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 5px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .example-box .arrow {
+    text-align: center;
+    color: var(--gray-400);
+    font-size: 16px;
+    margin: 4px 0;
+  }
+  .example-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--gray-600);
+    padding: 4px 0;
+  }
+  .flow-step .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--blue-accent);
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .flow-step .dot.green { background: var(--green); }
+  .flow-step .dot.red { background: var(--red); }
+  .flow-step .dot.amber { background: var(--amber); }
+  .flow-step .dot.teal { background: var(--teal); }
+  .flow-step .dot.purple { background: var(--purple); }
+
+  /* Status bar at bottom of card */
+  .step-card-footer {
+    padding: 10px 24px;
+    background: var(--gray-50);
+    border-top: var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .footer-tag {
+    font-size: 11px;
+    color: var(--gray-400);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .footer-tag strong { color: var(--gray-600); font-weight: 500; }
+
+  /* ── Flow diagram ── */
+  .flow-overview {
+    background: white;
+    border: var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px 36px;
+    margin: 32px 0;
+    box-shadow: var(--shadow-sm);
+  }
+  .flow-overview-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 24px;
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .flow-box {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+    text-align: center;
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+  .flow-arrow {
+    color: var(--gray-400);
+    font-size: 14px;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+  .fb-blue { background: var(--blue-light); color: var(--blue-mid); }
+  .fb-teal { background: var(--teal-light); color: var(--teal); }
+  .fb-amber { background: var(--amber-light); color: var(--amber); }
+  .fb-green { background: var(--green-light); color: var(--green); }
+  .fb-purple { background: var(--purple-light); color: var(--purple); }
+  .fb-gray { background: var(--gray-100); color: var(--gray-600); }
+
+  /* Phase colors */
+  .p1 { background: #EFF6FF; color: #1D4ED8; }
+  .p2 { background: #F0FDF4; color: #15803D; }
+  .p3 { background: #FEF9C3; color: #A16207; }
+  .p4 { background: #FDF4FF; color: #86198F; }
+  .p5 { background: #FFF7ED; color: #C2410C; }
+  .p6 { background: #F0FDFA; color: #0F766E; }
+  .p7 { background: #F8FAFC; color: #334155; }
+  .p8 { background: #FFF1F2; color: #BE123C; }
+
+  .dot-p1 { background: #1D4ED8; }
+  .dot-p2 { background: #15803D; }
+  .dot-p3 { background: #A16207; }
+  .dot-p4 { background: #86198F; }
+  .dot-p5 { background: #C2410C; }
+  .dot-p6 { background: #0F766E; }
+  .dot-p7 { background: #334155; }
+  .dot-p8 { background: #BE123C; }
+
+  .step-num-p1 { background: #1D4ED8; }
+  .step-num-p2 { background: #15803D; }
+  .step-num-p3 { background: #A16207; }
+  .step-num-p4 { background: #86198F; }
+  .step-num-p5 { background: #C2410C; }
+  .step-num-p6 { background: #0F766E; }
+  .step-num-p7 { background: #334155; }
+  .step-num-p8 { background: #BE123C; }
+
+  /* ── Summary table ── */
+  .summary-section {
+    margin: 48px 0 32px;
+  }
+  .summary-section h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--blue-dark);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--gray-200);
+  }
+  table.summary {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: var(--border);
+  }
+  table.summary thead tr {
+    background: var(--blue-dark);
+    color: white;
+  }
+  table.summary th {
+    padding: 12px 16px;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-align: left;
+  }
+  table.summary td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--gray-100);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  table.summary tr:last-child td { border-bottom: none; }
+  table.summary tr:nth-child(even) td { background: var(--gray-50); }
+  table.summary .mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    background: var(--gray-100);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--blue-mid);
+  }
+
+  /* ── Key concepts ── */
+  .concepts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .concept-card {
+    background: white;
+    border: var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .concept-card h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue-dark);
+    margin-bottom: 6px;
+  }
+  .concept-card p {
+    font-size: 12.5px;
+    color: var(--gray-600);
+    line-height: 1.6;
+  }
+  .concept-icon {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; }
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .step-card, .toc, .flow-overview { box-shadow: none; break-inside: avoid; }
+    .page { padding: 0 20px 40px; }
+  }
+
+  @media (max-width: 700px) {
+    .cover { padding: 40px 24px 32px; }
+    .page { padding: 0 16px 60px; }
+    .step-card-body { grid-template-columns: 1fr; }
+    .toc-grid { grid-template-columns: 1fr; }
+    .concepts-grid { grid-template-columns: 1fr; }
+    .cover-meta { flex-wrap: wrap; gap: 20px; }
+    .phase-desc { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ COVER ═══════════════════ -->
+<div class="cover">
+  <div class="cover-label">Low Level Design Document</div>
+  <h1>NSO Service Provisioning<br>Flow — End to End</h1>
+  <p class="cover-subtitle">How a single CLI command becomes live network configuration across multi-vendor devices</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <label>Document Type</label>
+      <span>Technical LLD</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Audience</label>
+      <span>Senior Management / Architecture</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Total Steps</label>
+      <span>22 Steps across 8 Phases</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Technology</label>
+      <span>Cisco NSO / YANG / NETCONF</span>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ═══════════════════ EXECUTIVE SUMMARY ═══════════════════ -->
+<div class="flow-overview" style="margin-top:40px;">
+  <div class="flow-overview-title">Executive Summary — What This Document Covers</div>
+  <p style="font-size:14px;color:var(--gray-600);line-height:1.8;margin-bottom:16px;">
+    When a network engineer types a single command such as <strong style="color:var(--blue-mid);font-family:'IBM Plex Mono',monospace;font-size:13px;">simple-service test1 device ios0 bandwidth 100M</strong>, Cisco NSO executes a deterministic 22-step pipeline that validates the request, generates device-specific configuration, computes only what has changed, pushes it to the physical device, and commits everything as an atomic transaction — all within seconds.
+  </p>
+  <p style="font-size:14px;color:var(--gray-600);line-height:1.8;">
+    This document details every step: what triggers it, what it does, and why it is necessary. The flow is divided into <strong>8 phases</strong> — from schema registration through final persistence. Two YANG models drive the entire pipeline: the <strong style="color:var(--purple);">Service YANG</strong> (defines what the engineer can ask for) and the <strong style="color:var(--teal);">NED YANG</strong> (defines the device's native configuration vocabulary).
+  </p>
+</div>
+
+<!-- ═══════════════════ FLOW OVERVIEW ═══════════════════ -->
+<div class="flow-overview">
+  <div class="flow-overview-title">High-Level Pipeline — 8 Phases at a Glance</div>
+  <div class="flow-row" style="margin-bottom:12px;">
+    <div class="flow-box fb-blue">① YANG Schema<br>Registration</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box fb-green">② Input &amp;<br>Validation</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box fb-amber">③ Service<br>Orchestration</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box fb-purple">④ Mapping &amp;<br>Logic</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="background:#FFF7ED;color:#C2410C;">⑤ Config<br>Generation</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box fb-teal">⑥ FASTMAP<br>Delta</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box fb-gray">⑦ Southbound<br>Execution</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="background:#FFF1F2;color:#BE123C;">⑧ Commit &amp;<br>Persist</div>
+  </div>
+  <p style="font-size:12px;color:var(--gray-400);">Each phase is fully detailed below with step numbers, explanations, and worked examples using input: <span style="font-family:'IBM Plex Mono',monospace;">service=test1, device=ios0, bandwidth=100M</span></p>
+</div>
+
+<!-- ═══════════════════ YANG MODEL LEGEND ═══════════════════ -->
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+  <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray-600);background:white;border:var(--border);padding:8px 14px;border-radius:20px;">
+    <span style="width:10px;height:10px;border-radius:3px;background:var(--purple);flex-shrink:0;"></span>
+    <strong>Service YANG</strong> — Defines the service schema (what users can configure: bandwidth, device, service name)
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray-600);background:white;border:var(--border);padding:8px 14px;border-radius:20px;">
+    <span style="width:10px;height:10px;border-radius:3px;background:var(--teal);flex-shrink:0;"></span>
+    <strong>NED YANG</strong> — Defines device vocabulary (how Cisco/Huawei config is structured)
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray-600);background:white;border:var(--border);padding:8px 14px;border-radius:20px;">
+    <span style="width:10px;height:10px;border-radius:3px;background:var(--amber);flex-shrink:0;"></span>
+    <strong>Both</strong> — Both models are active in this step
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 1
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p1">Phase 1</div>
+  <div class="phase-title">YANG Schema Layer</div>
+  <div class="phase-desc">Before any user request — system startup</div>
+</div>
+
+<!-- Step 1 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p1">Step 01</span>
+    <h3>YANG Model Registration</h3>
+    <span class="yang-badge yang-both">Both Models</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>When NSO starts or a package is loaded, all YANG model files (<code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">simple-service.yang</code>, <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">cisco-ios.yang</code>, <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">huawei-vrp.yang</code>) are compiled and registered into NSO's central schema store. This builds a complete structural map of every valid field, type, and constraint across all services and all device types simultaneously.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--blue-light);border-radius:var(--radius);border-left:3px solid var(--blue-accent);">
+        <p style="font-size:12.5px;color:var(--blue-mid);">📌 <strong>Why it matters:</strong> This registration happens once at startup. All downstream validation, path resolution, and template rendering consult this in-memory schema — disk files are never re-read during live requests. This makes NSO extremely fast at validation time.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="label">Packages loaded at NSO startup</div>
+        <div class="input-line">Package: my-service-pkg<br>  └── simple-service.yang ✓<br>Package: cisco-ios-ned<br>  └── cisco-ios.yang ✓<br>Package: huawei-vrp-ned<br>  └── huawei-vrp.yang ✓</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>All 3 YANG files compiled → schema objects</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>Registered in NSO schema store (in-memory)</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>NSO ready to accept requests — no disk reads needed hereafter</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Trigger: <strong>Package load / NSO startup</strong></span>
+    <span class="footer-tag">Output: <strong>In-memory schema store populated</strong></span>
+    <span class="footer-tag">Failure: <strong>Package load rejected — YANG syntax error</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 2
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p2">Phase 2</div>
+  <div class="phase-title">Input & Validation</div>
+  <div class="phase-desc">Steps 2 – 5 · User request → staged in CDB</div>
+</div>
+
+<!-- Step 2 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p2">Step 02</span>
+    <h3>User Input — Request Arrives</h3>
+    <span class="yang-badge yang-service">Service YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>A provisioning request arrives via CLI, RESTCONF API, or NETCONF. NSO accepts this as a <strong>candidate configuration edit</strong> — a transactional change that has not yet been applied to any device. Nothing is committed or validated yet; this is purely intake.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--green-light);border-radius:var(--radius);border-left:3px solid var(--green);">
+        <p style="font-size:12.5px;color:var(--green);">📌 <strong>Why it matters:</strong> NSO uses a "candidate then commit" model. By staging first, any failure later in the pipeline can be completely rolled back — no partial configuration ever reaches a real device.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="label">Engineer types in NSO CLI</div>
+        <div class="input-line">services simple-service test1<br>  device ios0<br>  bandwidth 100M</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot"></div><span>Service name = <strong>test1</strong></span></div>
+          <div class="flow-step"><div class="dot"></div><span>Target device = <strong>ios0</strong></span></div>
+          <div class="flow-step"><div class="dot"></div><span>Bandwidth = <strong>100M</strong> (100 Megabits)</span></div>
+          <div class="flow-step"><div class="dot amber"></div><span>Status: candidate (not yet committed)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Interface: <strong>CLI / RESTCONF / NETCONF</strong></span>
+    <span class="footer-tag">State: <strong>Candidate (uncommitted)</strong></span>
+  </div>
+</div>
+
+<!-- Step 3 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p2">Step 03</span>
+    <h3>NSO Request Processing — Service Type Identified</h3>
+    <span class="yang-badge yang-service">Service YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>NSO parses the incoming request path (<code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">/services/simple-service</code>) and queries the schema store to confirm a YANG model exists for this service type. If the service name is unknown or misspelled, the transaction is rejected immediately with a clear error — no processing occurs.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="label">NSO schema lookup</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot"></div><span>NSO reads path: <strong>/services/simple-service</strong></span></div>
+          <div class="flow-step"><div class="dot green"></div><span>Schema store: "simple-service" → <strong>found ✓</strong></span></div>
+          <div class="flow-step"><div class="dot red"></div><span>If "wrong-service" → <strong>rejected immediately ✗</strong></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Lookup target: <strong>list simple-service in Service YANG</strong></span>
+    <span class="footer-tag">Failure: <strong>Unknown service → transaction aborted</strong></span>
+  </div>
+</div>
+
+<!-- Step 4 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p2">Step 04</span>
+    <h3>YANG Validation — 3-Stage Gate</h3>
+    <span class="yang-badge yang-service">Service YANG</span>
+  </div>
+  <div class="step-card-body full">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>NSO runs three sequential validation checks against the Service YANG schema. All three must pass — any failure aborts the transaction with a precise, human-readable error message pointing to the exact field that failed.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
+      <div style="background:var(--blue-light);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--blue-mid);margin-bottom:6px;">Gate 1 — Structure</div>
+        <p style="font-size:12.5px;color:var(--gray-600);">Are all mandatory fields present? Are there any unknown fields?</p>
+        <div style="margin-top:8px;font-size:12px;color:var(--green);font-family:monospace;">device=ios0 ✓<br>bandwidth=100M ✓</div>
+      </div>
+      <div style="background:var(--purple-light);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--purple);margin-bottom:6px;">Gate 2 — Data Types</div>
+        <p style="font-size:12.5px;color:var(--gray-600);">Do values match expected types — string, uint32, enumeration?</p>
+        <div style="margin-top:8px;font-size:12px;color:var(--green);font-family:monospace;">100M → valid string ✓<br>ios0 → valid string ✓</div>
+      </div>
+      <div style="background:var(--teal-light);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--teal);margin-bottom:6px;">Gate 3 — Leafref</div>
+        <p style="font-size:12.5px;color:var(--gray-600);">Does device "ios0" actually exist in /devices/device list?</p>
+        <div style="margin-top:8px;font-size:12px;color:var(--green);font-family:monospace;">ios0 → exists in CDB ✓</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;padding:10px 14px;background:var(--red-light);border-radius:var(--radius);border-left:3px solid var(--red);">
+      <p style="font-size:12.5px;color:var(--red);">⚠ <strong>Failure examples:</strong> bandwidth=ABCDEF (wrong type) · device=ios99 (does not exist) · missing mandatory field → All abort with precise error. No device is ever touched.</p>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Validation model: <strong>Service YANG constraints</strong></span>
+    <span class="footer-tag">Failure: <strong>Transaction aborted, error returned to user</strong></span>
+  </div>
+</div>
+
+<!-- Step 5 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p2">Step 05</span>
+    <h3>Candidate CDB Write — Temporary Staging Store</h3>
+    <span class="yang-badge yang-service">Service YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>After all three validation gates pass, the service data is written into NSO's <strong>Candidate CDB</strong> (Configuration Database) — a temporary, transactional staging area. The Running CDB (the live, committed state) remains completely unchanged. Rollback at this point is free: no device has been contacted, no configuration lock is held on any router.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--amber-light);border-radius:var(--radius);border-left:3px solid var(--amber);">
+        <p style="font-size:12.5px;color:var(--amber);">📌 <strong>Why it matters:</strong> Think of Candidate CDB as a "shopping cart" — items are staged before checkout. If anything fails later, the cart is simply discarded. Running CDB = what's currently live on the network.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example — What gets written</h4>
+      <div class="example-box">
+        <div class="label">Candidate CDB entry created</div>
+        <div class="input-line">/services/simple-service[name='test1']<br>  device  = ios0<br>  bandwidth = 100M</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>Running CDB: <strong>unchanged</strong></span></div>
+          <div class="flow-step"><div class="dot amber"></div><span>Candidate CDB: <strong>test1 staged</strong></span></div>
+          <div class="flow-step"><div class="dot"></div><span>No device contacted yet</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Storage: <strong>Candidate CDB (not Running CDB)</strong></span>
+    <span class="footer-tag">Rollback cost: <strong>Zero — discard candidate</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 3
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p3">Phase 3</div>
+  <div class="phase-title">Service Orchestration</div>
+  <div class="phase-desc">Steps 6 – 8 · NSO takes ownership of the transaction</div>
+</div>
+
+<!-- Step 6 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p3">Step 06</span>
+    <h3>Service Manager — Transaction Ownership</h3>
+    <span class="yang-badge yang-none">NSO Orchestration</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>NSO's Service Manager detects the Candidate CDB change and takes full ownership of the transaction. It manages the entire lifecycle: invoking create/modify/delete callbacks, coordinating multi-device operations, and gating the final two-phase commit. If anything fails from here forward, Service Manager triggers automatic rollback across all devices.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="label">Service Manager detects change</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>CDB change detected: test1 (simple-service)</span></div>
+          <div class="flow-step"><div class="dot"></div><span>Operation type: CREATE (new service)</span></div>
+          <div class="flow-step"><div class="dot"></div><span>Target devices: ios0</span></div>
+          <div class="flow-step"><div class="dot purple"></div><span>Rollback plan initialized</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Trigger: <strong>Candidate CDB change detected</strong></span>
+    <span class="footer-tag">Responsibility: <strong>Full transaction lifecycle</strong></span>
+  </div>
+</div>
+
+<!-- Step 7 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p3">Step 07</span>
+    <h3>Servicepoint Trigger — Bridge to Code</h3>
+    <span class="yang-badge yang-service">Service YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>The YANG annotation <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">ncs:servicepoint simple-service;</code> embedded in the Service YANG is the bridge between data model and execution logic. When the Service Manager processes the service instance, it fires this named servicepoint. NSO looks up which Python class is registered under that name.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--purple-light);border-radius:var(--radius);border-left:3px solid var(--purple);">
+        <p style="font-size:12.5px;color:var(--purple);">📌 <strong>Analogy:</strong> The servicepoint is like a webhook name — "when data of type X appears, call handler Y." The YANG model declares it; Python implements it.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="label">YANG annotation fires servicepoint</div>
+        <div class="input-line">ncs:servicepoint "simple-service";<br>↓<br>NSO fires: sp="simple-service"</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot"></div><span>Servicepoint name = "simple-service"</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>NSO looks up registered handler</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Source: <strong>ncs:servicepoint annotation in Service YANG</strong></span>
+  </div>
+</div>
+
+<!-- Step 8 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p3">Step 08</span>
+    <h3>Servicepoint Lookup — Find the Python Handler</h3>
+    <span class="yang-badge yang-none">Application Registry</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>NSO resolves the servicepoint name to a registered Python class in its application registry. Python classes register themselves at package load time using the decorator <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">@ncs.application.Service(servicepoint='simple-service')</code>. If no handler is found, the transaction fails.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="label">Registry lookup</div>
+        <div class="input-line">Servicepoint: "simple-service"<br>→ Registered class: SimpleService<br>→ File: packages/simple/python/main.py</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>Handler found → proceed</span></div>
+          <div class="flow-step"><div class="dot red"></div><span>Handler missing → transaction fails</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Mechanism: <strong>Python @Service decorator at package load</strong></span>
+    <span class="footer-tag">Failure: <strong>No handler registered → abort</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 4
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p4">Phase 4</div>
+  <div class="phase-title">Mapping & Logic Execution</div>
+  <div class="phase-desc">Steps 9 – 12 · Business logic, vendor detection, template selection</div>
+</div>
+
+<!-- Step 9 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p4">Step 09</span>
+    <h3>Mapping Logic Layer — Core Decision Engine</h3>
+    <span class="yang-badge yang-none">Business Logic</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>This is the brain of the service. The mapping layer decouples what the engineer asked for (abstract service intent: "bandwidth=100M on ios0") from how that translates to actual device config (vendor-specific CLI or XML). It decides: which vendor logic applies, which template to use, and what runtime values to inject. All subsequent steps execute based on decisions made here.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--purple-light);border-radius:var(--radius);border-left:3px solid var(--purple);">
+        <p style="font-size:12.5px;color:var(--purple);">📌 <strong>Key benefit:</strong> One service definition works across Cisco, Huawei, Juniper. The mapping layer absorbs all vendor differences — the engineer never needs to know which vendor's CLI syntax to use.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example — Three decisions made</h4>
+      <div class="example-box">
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot purple"></div><span>Decision 1: Which vendor? → query NED ID</span></div>
+          <div class="flow-step"><div class="dot purple"></div><span>Decision 2: Which template? → cisco.xml or huawei.xml?</span></div>
+          <div class="flow-step"><div class="dot purple"></div><span>Decision 3: What values? → convert 100M → 100000 kbps</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Role: <strong>Decouple intent from device-specific implementation</strong></span>
+  </div>
+</div>
+
+<!-- Step 10 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p4">Step 10</span>
+    <h3>Python cb_create Callback — Read Parameters & Apply Business Logic</h3>
+    <span class="yang-badge yang-service">Service YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>The Python <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">cb_create</code> function is called with the service node as context. It reads <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">service.device</code> and <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">service.bandwidth</code> directly from the Candidate CDB, then applies business logic: unit conversion (100M → 100000 kbps), interface selection, policy naming, QoS class derivation.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example — Business logic applied</h4>
+      <div class="example-box">
+        <div class="label">Python reads service inputs</div>
+        <div class="input-line">device = service.device   # "ios0"<br>bw_raw = service.bandwidth # "100M"<br>bw_kbps = parse(bw_raw)    # 100000<br>iface = "GigabitEthernet0/1"</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>100M converted to 100000 kbps for Cisco CLI</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>Interface auto-selected from inventory</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>Variables dict prepared for template</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Input source: <strong>Service YANG-defined CDB node</strong></span>
+    <span class="footer-tag">Output: <strong>Variables dict for template rendering</strong></span>
+  </div>
+</div>
+
+<!-- Step 11 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p4">Step 11</span>
+    <h3>Vendor Selection — Identify Target Device Type</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>Python queries the device's NED ID from <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">/devices/device[ios0]/device-type/cli/ned-id</code> in the CDB. This string uniquely identifies the vendor, OS, and NED version. All downstream template selection and translation logic is driven by this single value.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example — NED IDs and outcomes</h4>
+      <div class="example-box">
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot blue" style="background:var(--blue-accent)"></div><span><strong>cisco-ios-cli-6.x</strong> → use Cisco IOS template</span></div>
+          <div class="flow-step"><div class="dot blue" style="background:var(--blue-accent)"></div><span><strong>cisco-iosxr-cli-7.x</strong> → use IOS-XR template</span></div>
+          <div class="flow-step"><div class="dot teal"></div><span><strong>huawei-vrp-cli-5.x</strong> → use Huawei VRP template</span></div>
+          <div class="flow-step"><div class="dot red"></div><span><strong>unknown-ned</strong> → error: unsupported device</span></div>
+        </div>
+        <div style="margin-top:8px;font-family:monospace;font-size:11px;background:white;border:1px solid var(--gray-200);padding:8px;border-radius:4px;color:var(--blue-mid);">ios0 → ned-id: cisco-ios-cli-6.x ✓</div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Query path: <strong>NSO core tailf-ncs-devices YANG</strong></span>
+    <span class="footer-tag">Drives: <strong>All downstream template and translation decisions</strong></span>
+  </div>
+</div>
+
+<!-- Step 12 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p4">Step 12</span>
+    <h3>Template Selection — Choose the Right Config Blueprint</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>Based on the NED ID from Step 11, the appropriate XML template is selected from the package's <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">templates/</code> directory. Templates contain YANG paths native to each vendor's NED (e.g., <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">/ios:interface/GigabitEthernet</code>). A service package may have one template per vendor, or one shared template with vendor-conditional blocks.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="label">Template folder structure</div>
+        <div class="input-line">templates/<br>  ├── cisco-ios.xml   ← selected for ios0<br>  └── huawei-vrp.xml</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>NED ID = cisco-ios-cli-6.x → <strong>cisco-ios.xml selected</strong></span></div>
+          <div class="flow-step"><div class="dot"></div><span>Template contains Cisco-specific YANG paths</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Template paths: <strong>NED YANG vocabulary</strong></span>
+    <span class="footer-tag">Selection driver: <strong>NED ID from Step 11</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 5
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p5">Phase 5</div>
+  <div class="phase-title">Configuration Generation</div>
+  <div class="phase-desc">Steps 13 – 14 · Abstract intent → concrete config tree</div>
+</div>
+
+<!-- Step 13 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p5">Step 13</span>
+    <h3>Template Execution — Inject Variables & Resolve Paths</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>The selected XML template is executed: all variable placeholders are replaced with actual values (device name, bandwidth in kbps, interface IDs, policy names), YANG paths are validated against the NED YANG schema, and conditional blocks are evaluated. The output is a fully populated YANG configuration subtree — structurally valid, vendor-specific, but not yet compared to current state.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example — Variables injected into template</h4>
+      <div class="example-box">
+        <div class="label">Template before → after injection</div>
+        <div class="input-line" style="font-size:11px;">&lt;bandwidth&gt;{bw_kbps}&lt;/bandwidth&gt;<br>↓<br>&lt;bandwidth&gt;100000&lt;/bandwidth&gt;<br>&lt;interface&gt;GigabitEthernet0/1&lt;/interface&gt;</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>All {variables} replaced with real values</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>YANG paths validated against cisco-ios NED YANG</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Validation: <strong>NED YANG schema</strong></span>
+    <span class="footer-tag">Output: <strong>Populated YANG config subtree</strong></span>
+  </div>
+</div>
+
+<!-- Step 14 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p5">Step 14</span>
+    <h3>Intended Configuration — Full Desired State</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>The complete desired state of the target device is produced — every configuration element the service requires. This is a <strong>YANG data tree</strong>, not device CLI yet. Critically, it has not been compared to what is already on the device. It represents pure intent: "here is everything this service needs to exist."</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--amber-light);border-radius:var(--radius);border-left:3px solid var(--amber);">
+        <p style="font-size:12.5px;color:var(--amber);">📌 <strong>Important:</strong> At this point NSO knows what we WANT — it does not yet know what ALREADY EXISTS on the device. That comparison happens next in FASTMAP (Step 15–17).</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example — Intended config tree</h4>
+      <div class="example-box">
+        <div class="input-line" style="font-size:11px;">ios:interface GigabitEthernet0/1<br>  ios:bandwidth 100000<br>  ios:service-policy output POLICY-100M<br>  ios:description "test1 managed by NSO"</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot amber"></div><span>Full YANG tree — not yet filtered or sent</span></div>
+          <div class="flow-step"><div class="dot amber"></div><span>No device contact has occurred</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Format: <strong>NED YANG data tree (not CLI)</strong></span>
+    <span class="footer-tag">Next: <strong>Compare vs. last committed state (FASTMAP)</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 6
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p6">Phase 6</div>
+  <div class="phase-title">FASTMAP Delta Computation</div>
+  <div class="phase-desc">Steps 15 – 17 · Compute only what changed — zero-touch idempotency</div>
+</div>
+
+<!-- Step 15 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p6">Step 15</span>
+    <h3>FASTMAP Engine — Compare New vs. Last Committed</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>NSO's FASTMAP algorithm compares the newly generated intended configuration (Step 14) against a snapshot of the service's <strong>last committed configuration</strong> stored in CDB. This is a pure local comparison — <strong>no device polling is required</strong>. NSO already knows what was last pushed because it stored a snapshot at the previous commit.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--teal-light);border-radius:var(--radius);border-left:3px solid var(--teal);">
+        <p style="font-size:12.5px;color:var(--teal);">📌 <strong>Key advantage:</strong> No CLI "show running-config" to the device. FASTMAP is entirely local — comparing two CDB snapshots. This makes NSO extremely scalable across thousands of devices.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example — First-time provision vs. modify</h4>
+      <div class="example-box">
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span><strong>First time:</strong> Previous snapshot = empty → everything is CREATE</span></div>
+          <div class="flow-step"><div class="dot amber"></div><span><strong>Modify:</strong> bandwidth 50M→100M → only that line is MODIFY</span></div>
+          <div class="flow-step"><div class="dot red"></div><span><strong>Delete service:</strong> snapshot present → everything is DELETE</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Algorithm: <strong>FASTMAP — local CDB diff, no device polling</strong></span>
+    <span class="footer-tag">Compares: <strong>Two NED YANG config trees</strong></span>
+  </div>
+</div>
+
+<!-- Step 16 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p6">Step 16</span>
+    <h3>DIFF Calculation — CREATE / MODIFY / DELETE</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>FASTMAP produces a precise three-way change set in a single deterministic pass. Every node in the NED YANG config tree is classified: new nodes are CREATE, changed values are MODIFY, nodes present in the snapshot but absent now are DELETE. This changeset is the only thing forwarded to the device.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example — Changeset produced</h4>
+      <div class="example-box">
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span><strong>CREATE:</strong> ios:description "test1 managed by NSO" (new)</span></div>
+          <div class="flow-step"><div class="dot amber"></div><span><strong>MODIFY:</strong> ios:bandwidth 50000 → 100000 (changed)</span></div>
+          <div class="flow-step"><div class="dot red"></div><span><strong>DELETE:</strong> ios:rate-limit (existed before, removed now)</span></div>
+          <div class="flow-step"><div class="dot teal"></div><span><strong>UNCHANGED:</strong> ios:interface name → silently skipped</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Output: <strong>CREATE + MODIFY + DELETE operations on NED YANG nodes</strong></span>
+    <span class="footer-tag">Pass count: <strong>Single deterministic pass</strong></span>
+  </div>
+</div>
+
+<!-- Step 17 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p6">Step 17</span>
+    <h3>Delta Configuration — Only Changes Go Forward</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>Only the computed delta is passed forward. Configuration already present on the device that matches intended state is silently dropped. This guarantees <strong>idempotency</strong>: pushing the same service configuration twice produces exactly zero device changes on the second run — nothing is reapplied unnecessarily.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--green-light);border-radius:var(--radius);border-left:3px solid var(--green);">
+        <p style="font-size:12.5px;color:var(--green);">📌 <strong>Idempotency = safety:</strong> Operations teams can re-run provisioning scripts without fear of disrupting a device that is already correctly configured. NSO will detect "nothing changed" and send nothing.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example — Idempotent re-provision</h4>
+      <div class="example-box">
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>Run 1: 3 commands sent to ios0 (CREATE)</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>Run 2 (same inputs): delta = <strong>empty</strong> → 0 commands sent</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>Result: device state is identical, no disruption</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Property: <strong>Idempotent — same input = zero change on second run</strong></span>
+    <span class="footer-tag">Output: <strong>Filtered NED YANG delta tree</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 7
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p7">Phase 7</div>
+  <div class="phase-title">Southbound Execution</div>
+  <div class="phase-desc">Steps 18 – 21 · Delta hits the real device</div>
+</div>
+
+<!-- Step 18 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p7">Step 18</span>
+    <h3>Device Manager — Resolve Connection Parameters</h3>
+    <span class="yang-badge yang-none">NSO Core</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>NSO's Device Manager retrieves the connection parameters for the target device (<code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">ios0</code>) from <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">/devices/device</code> in the CDB: IP address, port, transport protocol (SSH/NETCONF), and credentials. It manages connection pooling and enforces execution timeouts.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example</h4>
+      <div class="example-box">
+        <div class="input-line" style="font-size:11px;">ios0:<br>  address: 10.0.0.1<br>  port:    22<br>  protocol: SSH (CLI NED)<br>  credentials: &lt;from authgroup&gt;</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>Connection reused from pool if available</span></div>
+          <div class="flow-step"><div class="dot"></div><span>Timeout enforced (default: 30s)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Source: <strong>NSO core device model (CDB)</strong></span>
+    <span class="footer-tag">Protocol: <strong>SSH (CLI NED) / NETCONF / RESTCONF</strong></span>
+  </div>
+</div>
+
+<!-- Step 19 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p7">Step 19</span>
+    <h3>NED Translation — YANG Delta → Device Native Commands</h3>
+    <span class="yang-badge yang-ned">NED YANG</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>The Network Element Driver (NED) translates the abstract YANG delta tree into device-native protocol commands. For a CLI NED (Cisco IOS): SSH-delivered command lines. For NETCONF NEDs: XML-encoded RPC. For RESTCONF NEDs: HTTP PATCH/PUT/DELETE. Each NED is a driver built specifically for one vendor and OS version.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example — Same YANG, different output per vendor</h4>
+      <div class="example-box">
+        <div class="label">YANG node → CLI translation (Cisco IOS)</div>
+        <div class="input-line" style="font-size:11px;">ios:interface GigabitEthernet0/1<br>  ios:bandwidth 100000<br>↓ NED translates to CLI:<br>interface GigabitEthernet0/1<br> bandwidth 100000</div>
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot teal"></div><span>Huawei VRP: <code style="font-size:11px;">interface GE0/0/1 / bandwidth 100000</code></span></div>
+          <div class="flow-step"><div class="dot purple"></div><span>NETCONF NED: XML RPC &lt;edit-config&gt;</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">This is where: <strong>NED YANG is most actively consumed</strong></span>
+    <span class="footer-tag">Output: <strong>Device-native CLI / XML / HTTP</strong></span>
+  </div>
+</div>
+
+<!-- Step 20 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p7">Step 20</span>
+    <h3>Southbound Execution — Push Commands to Device</h3>
+    <span class="yang-badge yang-none">Transport Layer</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>Translated commands are pushed to the physical network device over the appropriate transport. NSO waits for explicit device acknowledgment before proceeding. Any device-side error (invalid syntax, hardware failure, capacity limit) triggers <strong>full transaction rollback</strong> across all devices in the transaction.</p>
+    </div>
+    <div class="step-example">
+      <h4>Example — Acknowledgment types</h4>
+      <div class="example-box">
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span><strong>CLI NED:</strong> Waits for device CLI prompt (no error in output)</span></div>
+          <div class="flow-step"><div class="dot green"></div><span><strong>NETCONF NED:</strong> Waits for &lt;rpc-reply&gt;&lt;ok/&gt;</span></div>
+          <div class="flow-step"><div class="dot green"></div><span><strong>RESTCONF NED:</strong> Waits for HTTP 200/201/204</span></div>
+          <div class="flow-step"><div class="dot red"></div><span>Any error → <strong>full rollback of all devices</strong></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Transports: <strong>SSH / NETCONF / RESTCONF</strong></span>
+    <span class="footer-tag">Error handling: <strong>Full atomic rollback</strong></span>
+  </div>
+</div>
+
+<!-- Step 21 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p7">Step 21</span>
+    <h3>Device Configuration Applied — Confirmation Received</h3>
+    <span class="yang-badge yang-none">Device / Network</span>
+  </div>
+  <div class="step-card-body">
+    <div class="step-what">
+      <h4>What Happens</h4>
+      <p>The network device confirms the configuration is active. For multi-device services (e.g., an L3VPN spanning 10 PE routers), <strong>all target devices must confirm success</strong>. A partial failure on any single device causes NSO to roll back every device in the transaction — restoring previous state everywhere. There is no partial success.</p>
+      <div style="margin-top:12px;padding:10px 14px;background:var(--green-light);border-radius:var(--radius);border-left:3px solid var(--green);">
+        <p style="font-size:12.5px;color:var(--green);">📌 <strong>All-or-nothing:</strong> If 9 of 10 routers succeed and 1 fails, NSO rolls back all 9 as well. The network either fully implements the service or returns to its exact previous state.</p>
+      </div>
+    </div>
+    <div class="step-example">
+      <h4>Example — Multi-device scenario</h4>
+      <div class="example-box">
+        <div class="example-flow">
+          <div class="flow-step"><div class="dot green"></div><span>ios0: config applied ✓</span></div>
+          <div class="flow-step"><div class="dot green"></div><span>ios1: config applied ✓</span></div>
+          <div class="flow-step"><div class="dot red"></div><span>ios2: error — interface down ✗</span></div>
+          <div class="flow-step"><div class="dot red"></div><span>Result: ios0 + ios1 rolled back → all 3 at original state</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Guarantee: <strong>Atomic across all devices</strong></span>
+    <span class="footer-tag">Partial failure: <strong>Full rollback everywhere</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     PHASE 8
+════════════════════════════════════════════════════ -->
+<div class="phase-header">
+  <div class="phase-badge p8">Phase 8</div>
+  <div class="phase-title">Commit & Persistence</div>
+  <div class="phase-desc">Step 22 · Seal the transaction — update Running CDB</div>
+</div>
+
+<!-- Step 22 -->
+<div class="step-card">
+  <div class="step-card-header">
+    <span class="step-num-badge step-num-p8">Step 22</span>
+    <h3>Two-Phase Commit — Candidate Promoted to Running CDB</h3>
+    <span class="yang-badge yang-both">Both Models</span>
+  </div>
+  <div class="step-card-body full">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What Happens</h4>
+        <p style="font-size:13.5px;line-height:1.7;color:var(--gray-600);">NSO executes a two-phase commit. The Candidate CDB is atomically promoted to the Running CDB — this is now the official live state. FASTMAP stores a snapshot of the NED YANG config that was just pushed, so future modifications or deletions can be computed relative to this exact state. The transaction is sealed.</p>
+        <div style="margin-top:12px;padding:10px 14px;background:var(--red-light);border-radius:var(--radius);border-left:3px solid var(--red);">
+          <p style="font-size:12.5px;color:var(--red);">📌 <strong>Two models persisted:</strong> Service YANG data (test1, ios0, 100M) committed to Running CDB. NED YANG data (the full device config tree) stored as FASTMAP snapshot for future delta computation.</p>
+        </div>
+      </div>
+      <div>
+        <div class="example-box">
+          <div class="label">What gets written on commit</div>
+          <div class="example-flow">
+            <div class="flow-step"><div class="dot green"></div><span><strong>Running CDB (Service YANG):</strong><br>/services/simple-service[name='test1'] → persisted</span></div>
+            <div class="flow-step"><div class="dot teal"></div><span><strong>FASTMAP snapshot (NED YANG):</strong><br>Full device config tree stored for next diff</span></div>
+            <div class="flow-step"><div class="dot purple"></div><span><strong>Audit log:</strong> Transaction ID, timestamp, user, device</span></div>
+            <div class="flow-step"><div class="dot amber"></div><span><strong>Rollback file:</strong> NSO can undo via rollback #N</span></div>
+          </div>
+          <div style="margin-top:10px;font-family:monospace;font-size:11px;background:white;border:1px solid var(--gray-200);padding:8px;border-radius:4px;color:var(--green);">✓ Commit complete. Service test1 is live on ios0.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-card-footer">
+    <span class="footer-tag">Commit type: <strong>Atomic two-phase commit</strong></span>
+    <span class="footer-tag">Persisted: <strong>Service YANG + NED YANG snapshot</strong></span>
+    <span class="footer-tag">Future: <strong>All changes computed relative to this snapshot</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SUMMARY TABLE
+════════════════════════════════════════════════════ -->
+<div class="summary-section">
+  <h2>Complete Step Reference — All 22 Steps</h2>
+  <table class="summary">
+    <thead>
+      <tr>
+        <th style="width:60px;">Step</th>
+        <th style="width:120px;">Phase</th>
+        <th>Step Name</th>
+        <th style="width:120px;">YANG Model</th>
+        <th>Key Output / Purpose</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">01</td><td>Schema Layer</td><td>YANG Model Registration</td><td><span style="color:var(--amber);font-size:12px;">Both</span></td><td>Schema store populated at startup — source of truth for all validation</td></tr>
+      <tr><td class="mono">02</td><td>Input & Validation</td><td>User Input</td><td><span style="color:var(--purple);font-size:12px;">Service YANG</span></td><td>Candidate edit created — no device touched, full rollback free</td></tr>
+      <tr><td class="mono">03</td><td>Input & Validation</td><td>NSO Request Processing</td><td><span style="color:var(--purple);font-size:12px;">Service YANG</span></td><td>Service type resolved — unknown services rejected immediately</td></tr>
+      <tr><td class="mono">04</td><td>Input & Validation</td><td>YANG Validation</td><td><span style="color:var(--purple);font-size:12px;">Service YANG</span></td><td>3-gate check: structure + data types + leafref integrity</td></tr>
+      <tr><td class="mono">05</td><td>Input & Validation</td><td>Candidate CDB Write</td><td><span style="color:var(--purple);font-size:12px;">Service YANG</span></td><td>Staged in Candidate CDB — Running CDB unchanged</td></tr>
+      <tr><td class="mono">06</td><td>Orchestration</td><td>Service Manager</td><td>NSO Core</td><td>Transaction ownership — lifecycle, rollback, multi-device coordination</td></tr>
+      <tr><td class="mono">07</td><td>Orchestration</td><td>Servicepoint Trigger</td><td><span style="color:var(--purple);font-size:12px;">Service YANG</span></td><td>ncs:servicepoint annotation fires named handler</td></tr>
+      <tr><td class="mono">08</td><td>Orchestration</td><td>Servicepoint Lookup</td><td>App Registry</td><td>Python class resolved from application registry</td></tr>
+      <tr><td class="mono">09</td><td>Mapping & Logic</td><td>Mapping Logic Layer</td><td>Business Logic</td><td>Vendor decision + template selection + variable preparation</td></tr>
+      <tr><td class="mono">10</td><td>Mapping & Logic</td><td>Python cb_create Callback</td><td><span style="color:var(--purple);font-size:12px;">Service YANG</span></td><td>Business logic: unit conversion, interface selection, policy derivation</td></tr>
+      <tr><td class="mono">11</td><td>Mapping & Logic</td><td>Vendor Selection</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>NED ID queried — identifies vendor, OS, NED version</td></tr>
+      <tr><td class="mono">12</td><td>Mapping & Logic</td><td>Template Selection</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>Correct vendor XML template selected from templates/ directory</td></tr>
+      <tr><td class="mono">13</td><td>Config Generation</td><td>Template Execution</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>Variables injected, YANG paths resolved → populated config subtree</td></tr>
+      <tr><td class="mono">14</td><td>Config Generation</td><td>Intended Configuration</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>Full desired state as YANG tree — not yet compared to actual state</td></tr>
+      <tr><td class="mono">15</td><td>FASTMAP Delta</td><td>FASTMAP Engine</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>Compares intended vs. last committed snapshot — no device polling</td></tr>
+      <tr><td class="mono">16</td><td>FASTMAP Delta</td><td>DIFF Calculation</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>CREATE / MODIFY / DELETE computed in single deterministic pass</td></tr>
+      <tr><td class="mono">17</td><td>FASTMAP Delta</td><td>Delta Configuration</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>Only changed nodes forwarded — guarantees idempotency</td></tr>
+      <tr><td class="mono">18</td><td>Southbound</td><td>Device Manager</td><td>NSO Core</td><td>Connection parameters resolved (IP, port, credentials, protocol)</td></tr>
+      <tr><td class="mono">19</td><td>Southbound</td><td>NED Translation</td><td><span style="color:var(--teal);font-size:12px;">NED YANG</span></td><td>YANG delta → device-native CLI / NETCONF XML / RESTCONF</td></tr>
+      <tr><td class="mono">20</td><td>Southbound</td><td>Southbound Execution</td><td>Transport</td><td>Commands pushed, device ack awaited — error triggers rollback</td></tr>
+      <tr><td class="mono">21</td><td>Southbound</td><td>Device Config Applied</td><td>Network Layer</td><td>All devices confirm — partial failure = full rollback everywhere</td></tr>
+      <tr><td class="mono">22</td><td>Commit & Persist</td><td>Commit Phase</td><td><span style="color:var(--amber);font-size:12px;">Both</span></td><td>Candidate → Running CDB, FASTMAP snapshot stored, transaction sealed</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     KEY CONCEPTS
+════════════════════════════════════════════════════ -->
+<div class="summary-section">
+  <h2>Key Concepts — Management Glossary</h2>
+  <div class="concepts-grid">
+    <div class="concept-card">
+      <div class="concept-icon">📐</div>
+      <h4>YANG Model</h4>
+      <p>A schema language that precisely defines the structure, data types, and rules for network configuration — similar to a database schema. Service YANG defines what engineers can configure; NED YANG defines each device vendor's vocabulary.</p>
+    </div>
+    <div class="concept-card">
+      <div class="concept-icon">🗃️</div>
+      <h4>CDB (Configuration Database)</h4>
+      <p>NSO's internal database. The <strong>Candidate CDB</strong> is a staging area (changes in progress). The <strong>Running CDB</strong> is the live, committed state. This separation enables atomic, rollback-safe operations.</p>
+    </div>
+    <div class="concept-card">
+      <div class="concept-icon">⚡</div>
+      <h4>FASTMAP</h4>
+      <p>NSO's algorithm that computes only the difference between the new intended state and the last committed state — without querying the physical device. This makes NSO scalable to thousands of devices and guarantees idempotent provisioning.</p>
+    </div>
+    <div class="concept-card">
+      <div class="concept-icon">🔌</div>
+      <h4>NED (Network Element Driver)</h4>
+      <p>A vendor-specific adapter that translates abstract YANG configuration into device-native commands (Cisco CLI, Huawei commands, NETCONF XML, RESTCONF HTTP). One NED per vendor/OS version.</p>
+    </div>
+    <div class="concept-card">
+      <div class="concept-icon">🔁</div>
+      <h4>Idempotency</h4>
+      <p>A property where running the same operation multiple times produces the same result as running it once. NSO's FASTMAP guarantees this: re-provisioning an already-correct service sends zero commands to devices.</p>
+    </div>
+    <div class="concept-card">
+      <div class="concept-icon">⚛️</div>
+      <h4>Atomic Transaction</h4>
+      <p>All-or-nothing execution. If a service must configure 10 routers and router 7 fails, NSO rolls back all 9 previously successful routers. The network either fully implements the service or returns to its exact original state.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="margin-top:48px;padding-top:24px;border-top:var(--border);text-align:center;">
+  <p style="font-size:12px;color:var(--gray-400);">NSO Service Provisioning — Low Level Design · 22 Steps · 8 Phases · Cisco NSO / YANG / NETCONF</p>
+</div>
+
+</div><!-- /page -->
+</body>
+</html>
