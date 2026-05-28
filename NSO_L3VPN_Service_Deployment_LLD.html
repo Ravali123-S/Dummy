@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSO L3VPN Service Deployment — Low Level Design</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
+  :root {
+    --navy: #0A2540;
+    --blue: #1C4E8C;
+    --accent: #2D82E0;
+    --light-blue: #EBF4FF;
+    --teal: #0D9488;
+    --teal-light: #E6FAF8;
+    --amber: #D97706;
+    --amber-light: #FEF3C7;
+    --green: #059669;
+    --green-light: #D1FAE5;
+    --purple: #7C3AED;
+    --purple-light: #EDE9FE;
+    --red: #DC2626;
+    --red-light: #FEE2E2;
+    --gray-50: #F8FAFC;
+    --gray-100: #F1F5F9;
+    --gray-200: #E2E8F0;
+    --gray-400: #94A3B8;
+    --gray-600: #475569;
+    --gray-800: #1E293B;
+    --border: 1px solid #E2E8F0;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.7; color: var(--gray-800); background: var(--gray-50); }
+
+  /* Cover */
+  .cover { background: var(--navy); color: white; padding: 56px 64px 44px; position: relative; overflow: hidden; }
+  .cover::before { content:''; position:absolute; top:-60px; right:-60px; width:350px; height:350px; border-radius:50%; background:rgba(45,130,224,0.1); }
+  .cover-label { font-size:11px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  .cover h1 { font-size:34px; font-weight:600; line-height:1.2; margin-bottom:8px; position:relative; z-index:1; }
+  .cover-sub { font-size:15px; font-weight:300; color:rgba(255,255,255,0.6); margin-bottom:36px; position:relative; z-index:1; }
+  .cover-meta { display:flex; gap:36px; flex-wrap:wrap; position:relative; z-index:1; }
+  .cover-meta-item label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.38); display:block; margin-bottom:2px; }
+  .cover-meta-item span { font-size:13px; color:rgba(255,255,255,0.82); }
+
+  /* Page */
+  .page { max-width:1000px; margin:0 auto; padding:0 40px 80px; }
+
+  /* TOC */
+  .toc { background:white; border:var(--border); border-radius:var(--radius-lg); padding:28px 32px; margin:36px 0 8px; }
+  .toc-label { font-size:10px; font-weight:600; letter-spacing:2px; text-transform:uppercase; color:var(--gray-400); margin-bottom:16px; }
+  .toc-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px 28px; }
+  .toc-row { display:flex; align-items:center; gap:10px; padding:5px 0; border-bottom:1px solid var(--gray-100); font-size:12.5px; color:var(--gray-600); }
+  .toc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .toc-num { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--gray-400); min-width:22px; }
+
+  /* Section header */
+  .section-hdr { display:flex; align-items:center; gap:12px; padding:24px 0 14px; margin-top:44px; border-top:2px solid var(--gray-200); }
+  .section-hdr:first-of-type { margin-top:20px; }
+  .phase-pill { font-size:10px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase; padding:4px 12px; border-radius:20px; white-space:nowrap; }
+  .section-title { font-size:19px; font-weight:600; color:var(--navy); }
+  .section-sub { font-size:12px; color:var(--gray-400); margin-left:auto; text-align:right; }
+
+  /* Step card */
+  .step { background:white; border:var(--border); border-radius:var(--radius-lg); margin-bottom:18px; overflow:hidden; }
+  .step-head { display:flex; align-items:center; gap:14px; padding:16px 22px; border-bottom:var(--border); background:var(--gray-50); }
+  .step-num { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:white; border-radius:6px; padding:3px 8px; flex-shrink:0; }
+  .step-head h3 { font-size:14.5px; font-weight:600; flex:1; }
+  .cmd-pill { font-size:10px; font-weight:600; padding:3px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+
+  .step-body { padding:18px 22px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+  .one-col { }
+
+  /* Why box */
+  .why { padding:10px 14px; border-radius:var(--radius); border-left:3px solid; margin-top:12px; }
+  .why p { font-size:12.5px; line-height:1.65; }
+
+  /* Command block */
+  .cmd-block { background:#0D1117; border-radius:var(--radius); padding:14px 16px; margin:10px 0; }
+  .cmd-block .cmd-label { font-size:9px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#6E7681; margin-bottom:8px; }
+  .cmd-block code { font-family:'JetBrains Mono',monospace; font-size:12px; color:#E6EDF3; display:block; line-height:1.7; white-space:pre-wrap; }
+  .cmd-block code .hl { color:#F0C674; }
+  .cmd-block code .green { color:#7EE787; }
+  .cmd-block code .cyan { color:#79C0FF; }
+  .cmd-block code .comment { color:#6E7681; font-style:italic; }
+
+  /* Flow steps */
+  .flow { display:flex; flex-direction:column; gap:3px; margin-top:8px; }
+  .frow { display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--gray-600); padding:3px 0; }
+  .fdot { width:7px; height:7px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+
+  /* Screenshot */
+  .screenshot { margin:12px 0; }
+  .screenshot .ss-label { font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--gray-400); margin-bottom:6px; }
+  .screenshot img { width:100%; border-radius:var(--radius); border:1px solid var(--gray-200); display:block; }
+
+  /* Architecture diagram */
+  .arch-box { background:white; border:var(--border); border-radius:var(--radius-lg); padding:24px; margin:20px 0; text-align:center; }
+  .arch-box .arch-label { font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--gray-400); margin-bottom:14px; text-align:left; }
+  .arch-box img { max-width:780px; width:100%; border-radius:var(--radius); }
+  .arch-caption { font-size:12px; color:var(--gray-400); margin-top:10px; text-align:left; }
+
+  /* Step footer */
+  .step-foot { padding:9px 22px; background:var(--gray-50); border-top:var(--border); display:flex; gap:16px; flex-wrap:wrap; }
+  .foot-tag { font-size:11px; color:var(--gray-400); display:flex; align-items:center; gap:4px; }
+  .foot-tag strong { color:var(--gray-600); font-weight:500; }
+
+  /* Summary table */
+  .sum-wrap { margin:44px 0 28px; }
+  .sum-wrap h2 { font-size:18px; font-weight:600; color:var(--navy); margin-bottom:18px; padding-bottom:10px; border-bottom:2px solid var(--gray-200); }
+  table.sum { width:100%; border-collapse:collapse; font-size:12.5px; background:white; border-radius:var(--radius-lg); overflow:hidden; border:var(--border); }
+  table.sum thead tr { background:var(--navy); color:white; }
+  table.sum th { padding:11px 14px; font-weight:500; font-size:11px; letter-spacing:0.4px; text-align:left; }
+  table.sum td { padding:10px 14px; border-bottom:1px solid var(--gray-100); vertical-align:top; line-height:1.5; }
+  table.sum tr:last-child td { border-bottom:none; }
+  table.sum tr:nth-child(even) td { background:var(--gray-50); }
+  .mono { font-family:'JetBrains Mono',monospace; font-size:11px; background:var(--gray-100); padding:2px 6px; border-radius:3px; color:var(--blue); }
+
+  /* Phase colors */
+  .p1 { background:#EFF6FF; color:#1D4ED8; } .sn1 { background:#1D4ED8; }
+  .p2 { background:#F0FDF4; color:#15803D; } .sn2 { background:#15803D; }
+  .p3 { background:#FEF9C3; color:#A16207; } .sn3 { background:#A16207; }
+  .p4 { background:#FDF4FF; color:#86198F; } .sn4 { background:#86198F; }
+  .p5 { background:#FFF7ED; color:#C2410C; } .sn5 { background:#C2410C; }
+  .p6 { background:#F0FDFA; color:#0F766E; } .sn6 { background:#0F766E; }
+  .p7 { background:#F8FAFC; color:#334155; } .sn7 { background:#334155; }
+
+  .why-blue { background:var(--light-blue); border-color:var(--accent); }
+  .why-blue p { color:var(--blue); }
+  .why-green { background:var(--green-light); border-color:var(--green); }
+  .why-green p { color:var(--green); }
+  .why-amber { background:var(--amber-light); border-color:var(--amber); }
+  .why-amber p { color:var(--amber); }
+  .why-red { background:var(--red-light); border-color:var(--red); }
+  .why-red p { color:var(--red); }
+  .why-purple { background:var(--purple-light); border-color:var(--purple); }
+  .why-purple p { color:var(--purple); }
+  .why-teal { background:var(--teal-light); border-color:var(--teal); }
+  .why-teal p { color:var(--teal); }
+
+  @media(max-width:700px){
+    .cover{padding:36px 20px 28px;} .page{padding:0 14px 60px;}
+    .two-col{grid-template-columns:1fr;} .toc-grid{grid-template-columns:1fr;}
+    .section-sub{display:none;} .cover-meta{gap:18px;}
+  }
+  @media print {
+    body{background:white;} .cover{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .step,.toc{box-shadow:none;break-inside:avoid;} .page{padding:0 20px 40px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-label">Low Level Design Document</div>
+  <h1>Cisco NSO — L3VPN Service<br>Deployment Guide</h1>
+  <p class="cover-sub">End-to-end setup, configuration, and service deployment using Cisco NSO with netsim simulated devices</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><label>Document Type</label><span>Technical LLD</span></div>
+    <div class="cover-meta-item"><label>Audience</label><span>Network Engineers / Architects</span></div>
+    <div class="cover-meta-item"><label>Service Type</label><span>L3VPN (Template-based)</span></div>
+    <div class="cover-meta-item"><label>Total Phases</label><span>7 Phases · 14 Steps</span></div>
+    <div class="cover-meta-item"><label>Platform</label><span>Cisco NSO 6.4.1 + netsim</span></div>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- NSO ARCHITECTURE -->
+<div class="arch-box" style="margin-top:36px;">
+  <div class="arch-label">NSO Architecture Overview — Where Each Step Lives</div>
+  <img src="nso_images/image63.png" alt="NSO Architecture Diagram">
+  <p class="arch-caption">
+    <strong>Northbound Interfaces</strong> (NETCONF, REST, CLI, WebUI, SNMP) receive user requests →
+    <strong>Service Manager</strong> applies Service Models + Mapping Logic (Template / FASTMAP) →
+    <strong>Core Engine + CDB</strong> stores all state →
+    <strong>Device Manager</strong> uses Device Models + NEDs to push config →
+    <strong>Southbound Interfaces</strong> reach real devices.
+  </p>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <div class="toc-label">Contents — 7 Phases</div>
+  <div class="toc-grid">
+    <div class="toc-row"><div class="toc-dot" style="background:#1D4ED8"></div><span class="toc-num">Ph.1</span>Environment Setup — Load NSO + Create netsim Devices</div>
+    <div class="toc-row"><div class="toc-dot" style="background:#15803D"></div><span class="toc-num">Ph.2</span>Device Pre-configuration — Push Interface Config via IPC</div>
+    <div class="toc-row"><div class="toc-dot" style="background:#A16207"></div><span class="toc-num">Ph.3</span>Device Synchronisation — sync-from Devices into CDB</div>
+    <div class="toc-row"><div class="toc-dot" style="background:#86198F"></div><span class="toc-num">Ph.4</span>Package Setup — Add, Compile &amp; Reload L3VPN Package</div>
+    <div class="toc-row"><div class="toc-dot" style="background:#C2410C"></div><span class="toc-num">Ph.5</span>Service Instance Creation — Define L3VPN in NSO CDB</div>
+    <div class="toc-row"><div class="toc-dot" style="background:#0F766E"></div><span class="toc-num">Ph.6</span>Service Deployment — commit dry-run + commit and-quit</div>
+    <div class="toc-row"><div class="toc-dot" style="background:#334155"></div><span class="toc-num">Ph.7</span>Service Types Reference — Template vs Python vs Hybrid</div>
+    <div class="toc-row"><div class="toc-dot" style="background:#1D4ED8"></div><span class="toc-num">Ref</span>Command Quick Reference Table</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PHASE 1 — Environment Setup
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill p1">Phase 1</div>
+  <div class="section-title">Environment Setup</div>
+  <div class="section-sub">Load NSO · Create netsim network · Initialize NSO instance · Start services</div>
+</div>
+
+<!-- Step 1 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn1">Step 01</span>
+    <h3>Load NSO Environment Variables</h3>
+    <span class="cmd-pill" style="background:#EFF6FF;color:#1D4ED8;">source $NCS_DIR/ncsrc</span>
+  </div>
+  <div class="step-body one-col">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Sources the NSO environment configuration script, which sets all required shell variables: <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">$NCS_DIR</code>, <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">$PATH</code>, and other NSO-specific environment paths. This must be done in every new terminal session before running any NSO commands.</p>
+        <div class="why why-blue" style="margin-top:10px;">
+          <p>📌 <strong>Why first:</strong> Without this, commands like <code style="font-family:monospace;font-size:11px;">ncs-netsim</code>, <code style="font-family:monospace;font-size:11px;">ncs-setup</code>, <code style="font-family:monospace;font-size:11px;">ncs</code> will not be found by the shell. It bootstraps the entire toolchain.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Command</div>
+          <code><span class="hl">source $NCS_DIR/ncsrc</span>
+cd ~/src</code>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">Terminal Output</div>
+        <img src="nso_images/image1.png" alt="NSO environment setup and netsim device creation">
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Tool: <strong>Shell / Bash</strong></span>
+    <span class="foot-tag">Effect: <strong>NSO CLI tools available in PATH</strong></span>
+  </div>
+</div>
+
+<!-- Step 2 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn1">Step 02</span>
+    <h3>Create Simulated Network — ncs-netsim</h3>
+    <span class="cmd-pill" style="background:#EFF6FF;color:#1D4ED8;">ncs-netsim create-network / add-to-network</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Creates simulated (virtual) routers using <strong>netsim</strong> — NSO's built-in network simulator. Each simulated device uses a real NED package (cisco-ios-cli-3.0, cisco-iosxr-cli-3.5) so they behave exactly like real routers. Three devices are created: dist-rtr0 (IOS), internet-rtr0 (IOS), and core-rtr0 (IOS-XR).</p>
+        <div class="why why-green">
+          <p>📌 <strong>Why netsim:</strong> Allows full NSO testing without physical hardware. Each device gets its own IPC port for communication with NSO tools. NED packages determine which vendor's CLI syntax is simulated.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Commands — Create 3 devices</div>
+          <code><span class="comment"># Create first IOS device (dist-rtr)</span>
+ncs-netsim --dir nso-instance/netsim \
+  create-network \
+  $NCS_DIR/packages/neds/<span class="hl">cisco-ios-cli-3.0</span> \
+  1 <span class="cyan">dist-rtr</span>
+
+<span class="comment"># Add second IOS device (internet-rtr)</span>
+ncs-netsim --dir nso-instance/netsim \
+  add-to-network \
+  $NCS_DIR/packages/neds/<span class="hl">cisco-ios-cli-3.0</span> \
+  1 <span class="cyan">internet-rtr</span>
+
+<span class="comment"># Add IOS-XR core router</span>
+ncs-netsim --dir nso-instance/netsim \
+  add-to-network \
+  $NCS_DIR/packages/neds/<span class="hl">cisco-iosxr-cli-3.5</span> \
+  1 <span class="cyan">core-rtr</span></code>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">Output — Devices Created</div>
+          <img src="nso_images/image1.png" alt="ncs-netsim create-network output">
+        </div>
+        <div style="margin-top:14px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Devices Created</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div><strong>dist-rtr0</strong> — Cisco IOS (cisco-ios-cli-3.0)</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div><strong>internet-rtr0</strong> — Cisco IOS (cisco-ios-cli-3.0)</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div><strong>core-rtr0</strong> — Cisco IOS-XR (cisco-iosxr-cli-3.5)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Tool: <strong>ncs-netsim</strong></span>
+    <span class="foot-tag">Output dir: <strong>nso-instance/netsim/</strong></span>
+    <span class="foot-tag">Each device gets: <strong>unique IPC port</strong></span>
+  </div>
+</div>
+
+<!-- Step 3 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn1">Step 03</span>
+    <h3>Initialize NSO Instance + Start netsim and NSO</h3>
+    <span class="cmd-pill" style="background:#EFF6FF;color:#1D4ED8;">ncs-setup · ncs-netsim start · ncs</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;"><code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">ncs-setup</code> creates a complete NSO runtime environment — directory structure, CDB store, configuration files — and wires it to the netsim devices. Then netsim devices are started, followed by NSO itself.</p>
+        <div class="why why-blue">
+          <p>📌 <strong>Order matters:</strong> netsim devices must start before NSO attempts to connect to them. NSO reads the netsim directory to know each device's IPC port at startup.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">3 Commands in order</div>
+          <code><span class="comment"># 1. Create NSO runtime environment</span>
+ncs-setup --dest nso-instance \
+          --netsim-dir nso-instance/netsim
+
+<span class="comment"># 2. Enter NSO directory</span>
+cd nso-instance/
+
+<span class="comment"># 3. Start simulated devices first</span>
+<span class="hl">ncs-netsim start</span>
+
+<span class="comment"># 4. Start NSO</span>
+<span class="hl">ncs</span></code>
+        </div>
+      </div>
+      <div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:10px;">What ncs-setup Creates</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div>NSO runtime directory (nso-instance/)</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div>CDB database store (nso-instance/ncs-cdb/)</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div>Packages directory (auto-linked to NEDs)</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div>ncs.conf — NSO configuration file</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>Device entries pre-populated from netsim</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Startup Sequence</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#D97706"></div>ncs-netsim start → 3 simulated devices running</div>
+            <div class="frow"><div class="fdot" style="background:#D97706"></div>ncs → NSO daemon starts, loads packages</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>NSO ready — CDB loaded, devices registered</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">ncs-setup output: <strong>nso-instance/ directory</strong></span>
+    <span class="foot-tag">After ncs: <strong>NSO daemon running, CDB initialised</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PHASE 2 — Device Pre-configuration
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill p2">Phase 2</div>
+  <div class="section-title">Device Pre-configuration</div>
+  <div class="section-sub">Push GigabitEthernet interface config directly into netsim devices via IPC</div>
+</div>
+
+<div class="arch-box">
+  <div class="arch-label">Where This Happens in NSO Architecture — Device Manager + NED Layer</div>
+  <img src="nso_images/image63.png" alt="NSO Architecture — Device Manager highlighted">
+  <p class="arch-caption">In Phase 2, we bypass the Service Manager entirely and push configuration <strong>directly into netsim devices</strong> via their IPC ports using <code style="font-family:monospace;font-size:12px;">ncs_load</code>. This prepares the devices with GigabitEthernet interfaces before NSO syncs from them.</p>
+</div>
+
+<!-- Step 4 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn2">Step 04</span>
+    <h3>Push Interface Configuration to netsim Devices — ncs_load via IPC</h3>
+    <span class="cmd-pill" style="background:#F0FDF4;color:#15803D;">NCS_IPC_PORT · ncs_load</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Injects GigabitEthernet interface configuration directly into each simulated device using <strong>ncs_load</strong> over the device's unique IPC port. This is a raw configuration push — it bypasses NSO's service logic entirely and goes straight to the device's internal config store.</p>
+        <div class="why why-amber">
+          <p>📌 <strong>Why needed:</strong> netsim devices start with minimal config — no GigabitEthernet interfaces. The L3VPN service template assumes GigabitEthernet interfaces exist. This step creates them before NSO syncs.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">IPC = Inter-Process Communication Port</div>
+          <code><span class="comment"># IOS device (dist-rtr0) — IPC port 5010</span>
+<span class="hl">NCS_IPC_PORT=5010</span> ncs_load -Fc -l -m &lt;&lt; EOF
+interface GigabitEthernet5
+ description A GigE interface
+ no shutdown
+ ip address <span class="cyan">192.168.1.10</span> 255.255.255.0
+EOF
+
+<span class="comment"># IOS-XR device (core-rtr0) — IPC port 5012</span>
+<span class="hl">NCS_IPC_PORT=5012</span> ncs_load -Fc -l -m &lt;&lt; EOF
+interface GigabitEthernet 0/0/0/1
+ description A GigE interface
+ ipv4 address <span class="cyan">192.168.2.10</span> 255.255.255.0
+EOF</code>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">Terminal — ncs_load via IPC port</div>
+          <img src="nso_images/image4.png" alt="ncs_load IPC port command">
+        </div>
+        <div style="margin-top:12px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">ncs_load Flow</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#15803D"></div>ncs_load command invoked</div>
+            <div class="frow"><div class="fdot" style="background:#15803D"></div>Uses NCS_IPC_PORT to find device</div>
+            <div class="frow"><div class="fdot" style="background:#15803D"></div>Connects to netsim device directly</div>
+            <div class="frow"><div class="fdot" style="background:#15803D"></div>Pushes CLI config (GigabitEthernet)</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>Device updated ✅ — interface now exists</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Tool: <strong>ncs_load</strong></span>
+    <span class="foot-tag">Transport: <strong>IPC (not SSH/NETCONF)</strong></span>
+    <span class="foot-tag">Bypass: <strong>NSO service logic not involved</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PHASE 3 — Device Synchronisation
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill p3">Phase 3</div>
+  <div class="section-title">Device Synchronisation</div>
+  <div class="section-sub">Pull running config from all devices into NSO CDB — sync-from</div>
+</div>
+
+<!-- Step 5 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn3">Step 05</span>
+    <h3>Login to NSO CLI + Sync-from All Devices</h3>
+    <span class="cmd-pill" style="background:#FEF9C3;color:#A16207;">ncs_cli · devices sync-from</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;"><code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">ncs_cli -C -u admin</code> opens the NSO CLI as admin in Cisco-style mode. Then <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">devices sync-from</code> connects to every registered device, fetches their running configuration, and stores it in NSO's CDB. After this, NSO and all devices share identical configuration state.</p>
+        <div class="why why-teal">
+          <p>📌 <strong>Why sync-from:</strong> Step 4 pushed config directly to devices, bypassing NSO. NSO's CDB does not know about those changes yet. sync-from reads device reality and updates CDB — making them consistent before any service is deployed.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Commands</div>
+          <code><span class="comment"># Login to NSO CLI (Cisco-style, admin user)</span>
+<span class="hl">ncs_cli -C -u admin</span>
+
+<span class="comment"># Inside NSO CLI — sync from all devices</span>
+admin@ncs# <span class="hl">devices sync-from</span></code>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">Output — All Devices Synced</div>
+          <img src="nso_images/image6.png" alt="devices sync-from output">
+        </div>
+        <div style="margin-top:12px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">sync-from Flow</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#A16207"></div>NSO connects to each device (netsim)</div>
+            <div class="frow"><div class="fdot" style="background:#A16207"></div>Fetches running configuration via NED</div>
+            <div class="frow"><div class="fdot" style="background:#A16207"></div>Translates device config → YANG tree</div>
+            <div class="frow"><div class="fdot" style="background:#A16207"></div>Stores in NSO CDB (/devices/device/config)</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>Marks device as "in-sync" ✅</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">CLI mode: <strong>ncs_cli -C (Cisco-style)</strong></span>
+    <span class="foot-tag">Result: <strong>CDB = device running config</strong></span>
+    <span class="foot-tag">All 3 devices: <strong>result true ✅</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PHASE 4 — Package Setup
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill p4">Phase 4</div>
+  <div class="section-title">Package Setup — Add, Compile &amp; Reload L3VPN</div>
+  <div class="section-sub">Download lab files · Copy package · Compile YANG model · Reload into NSO</div>
+</div>
+
+<!-- Step 6 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn4">Step 06</span>
+    <h3>Download Lab Files + Copy L3VPN Package</h3>
+    <span class="cmd-pill" style="background:#FDF4FF;color:#86198F;">git clone · cp -r</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Clones the Cisco DevNet NSO lab files repository from GitHub, which contains the pre-built L3VPN service package. The package is then copied into NSO's <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">packages/</code> directory so NSO can discover and load it.</p>
+        <div class="why why-purple">
+          <p>📌 <strong>Package structure:</strong> A package contains the YANG model (l3vpn.yang), XML template, and optionally Python code. Placing it in packages/ makes it discoverable by NSO at reload time.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Commands</div>
+          <code><span class="comment"># Download Cisco DevNet lab files</span>
+git clone https://github.com/CiscoDevNet/<span class="hl">nso-lab-files.git</span> \
+  ../lab-files/
+
+<span class="comment"># Copy L3VPN package into NSO packages directory</span>
+cp -r ../lab-files/service-dev/packages/<span class="hl">l3vpn/</span> \
+  packages</code>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">Terminal — git clone + package copy</div>
+          <img src="nso_images/image7.png" alt="git clone and cp commands">
+        </div>
+        <div style="margin-top:12px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">L3VPN Package Contents</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#86198F"></div>packages/l3vpn/src/yang/<strong>l3vpn.yang</strong> — Service model</div>
+            <div class="frow"><div class="fdot" style="background:#86198F"></div>packages/l3vpn/templates/<strong>l3vpn.xml</strong> — Config template</div>
+            <div class="frow"><div class="fdot" style="background:#86198F"></div>packages/l3vpn/src/ — Source to compile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Source: <strong>github.com/CiscoDevNet/nso-lab-files</strong></span>
+    <span class="foot-tag">Destination: <strong>packages/l3vpn/</strong></span>
+  </div>
+</div>
+
+<!-- Step 7 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn4">Step 07</span>
+    <h3>Compile YANG Model → .fxs File</h3>
+    <span class="cmd-pill" style="background:#FDF4FF;color:#86198F;">make -B -C packages/l3vpn/src/</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Runs the NSO YANG compiler (<code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">ncsc</code>) to compile <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">l3vpn.yang</code> into <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">l3vpn.fxs</code>. The <strong>.fxs</strong> file is a compiled binary representation of the YANG model that NSO loads at runtime. Without this compilation step, NSO cannot understand the service schema.</p>
+        <div class="why why-amber">
+          <p>📌 <strong>.yang vs .fxs:</strong> The .yang file is human-readable source code. The .fxs is NSO's compiled binary format — optimised for fast schema lookup. NSO only reads .fxs files, never .yang directly at runtime.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Compile command</div>
+          <code><span class="hl">make -B -C packages/l3vpn/src/</span>
+
+<span class="comment"># This internally runs:</span>
+ncsc -c -o ../load-dir/<span class="cyan">l3vpn.fxs</span> \
+     yang/l3vpn.yang</code>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">Terminal — YANG compilation</div>
+          <img src="nso_images/image8.png" alt="make compile YANG to fxs">
+        </div>
+        <div style="margin-top:12px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Compilation Flow</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#86198F"></div>Source: l3vpn.yang (human-readable)</div>
+            <div class="frow"><div class="fdot" style="background:#86198F"></div>Compiler: ncsc (NSO YANG compiler)</div>
+            <div class="frow"><div class="fdot" style="background:#86198F"></div>Output: l3vpn.fxs (binary, in load-dir/)</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>NSO can now read this schema ✅</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Compiler: <strong>ncsc (NSO YANG compiler)</strong></span>
+    <span class="foot-tag">Input: <strong>l3vpn.yang</strong></span>
+    <span class="foot-tag">Output: <strong>l3vpn.fxs (load-dir/)</strong></span>
+  </div>
+</div>
+
+<!-- Step 8 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn4">Step 08</span>
+    <h3>Login to NSO CLI + Reload All Packages</h3>
+    <span class="cmd-pill" style="background:#FDF4FF;color:#86198F;">ncs_cli · packages reload</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;"><code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">packages reload</code> tells NSO to scan the packages directory, read all compiled .fxs files, and register the new schemas, services, templates, and Python handlers into memory. The L3VPN service becomes live and usable after this step.</p>
+        <div class="why why-blue">
+          <p>📌 <strong>What reload does internally:</strong> NSO enters a brief upgrade mode → reads all .fxs files → loads service YANG schemas into schema store → registers servicepoints → activates Python handlers → exits upgrade mode. All packages confirmed as result true.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Commands</div>
+          <code><span class="comment"># Login to NSO CLI</span>
+<span class="hl">ncs_cli -C -u admin</span>
+
+<span class="comment"># Reload all packages</span>
+admin@ncs# <span class="hl">packages reload</span>
+
+<span class="comment"># Expected output:</span>
+<span class="green">reload-result { package cisco-ios-cli-3.0 result true }</span>
+<span class="green">reload-result { package cisco-iosxr-cli-3.5 result true }</span>
+<span class="green">reload-result { package l3vpn result true }</span></code>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">Terminal — packages reload output</div>
+          <img src="nso_images/image10.png" alt="packages reload output">
+        </div>
+        <div style="margin-top:12px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Packages Loaded After Reload</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div><strong>cisco-ios-cli-3.0</strong> → NED for IOS devices</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8"></div><strong>cisco-iosxr-cli-3.5</strong> → NED for IOS-XR devices</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div><strong>l3vpn</strong> → Service package — now active ✅</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Command: <strong>packages reload</strong></span>
+    <span class="foot-tag">Mode: <strong>Brief NSO upgrade mode during reload</strong></span>
+    <span class="foot-tag">Result: <strong>L3VPN service available in CLI</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PHASE 5 — Service Instance Creation
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill p5">Phase 5</div>
+  <div class="section-title">Service Instance Creation</div>
+  <div class="section-sub">Define L3VPN service data in NSO CLI — validated and stored in Candidate CDB</div>
+</div>
+
+<div class="arch-box">
+  <div class="arch-label">Architecture Map — Service Manager + CDB (Candidate write)</div>
+  <img src="nso_images/image63.png" alt="NSO Architecture — Service Manager and CDB">
+  <p class="arch-caption">In Phase 5, user input enters via the <strong>CLI northbound interface</strong> → passes through <strong>Service Manager</strong> which validates it against the Service Model (l3vpn YANG) → stores the validated service instance in the <strong>CDB</strong> as a candidate entry. No device has been touched yet.</p>
+</div>
+
+<!-- Step 9 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn5">Step 09</span>
+    <h3>Verify L3VPN Data Model + Create Service Instance</h3>
+    <span class="cmd-pill" style="background:#FFF7ED;color:#C2410C;">conf · services l3vpn · commit</span>
+  </div>
+  <div class="step-body one-col">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Enter configuration mode and create a new L3VPN service instance. NSO's CLI is automatically generated from the YANG model — the hierarchy of commands directly reflects the structure defined in l3vpn.yang. All inputs are validated against YANG constraints before being stored in the Candidate CDB.</p>
+        <div class="why why-green">
+          <p>📌 <strong>YANG → CLI mapping:</strong> The l3vpn YANG model defines lists (vpn-name, link-id) and leaves (device, interface, routing). NSO exposes these exactly as CLI commands — no manual CLI scripting needed.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">L3VPN Data Model Hierarchy (from YANG)</div>
+          <code>l3vpn (vpn-name)
+  └── link (link-id)
+        └── device + interface + routing
+              └── static routes (prefix + mask)</code>
+        </div>
+        <div class="cmd-block" style="margin-top:8px;">
+          <div class="cmd-label">Create L3VPN Instance in NSO CLI</div>
+          <code>admin@ncs# <span class="hl">conf</span>
+admin@ncs(config)# <span class="hl">services l3vpn myVPN</span>
+admin@ncs(config-l3vpn-myVPN)# link LINK1
+admin@ncs(config-link-LINK1)# device dist-rtr0
+admin@ncs(config-link-LINK1)# interface GigabitEthernet5
+admin@ncs(config-link-LINK1)# routing static
+admin@ncs(config-...)# prefix 10.0.0.0 mask 255.255.255.0</code>
+        </div>
+      </div>
+      <div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Validation Gates (from YANG)</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#C2410C"></div>Structure — all mandatory leaves present?</div>
+            <div class="frow"><div class="fdot" style="background:#C2410C"></div>Data types — values match YANG types?</div>
+            <div class="frow"><div class="fdot" style="background:#C2410C"></div>Leafref — device "dist-rtr0" exists in CDB?</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>All pass → stored in Candidate CDB ✅</div>
+          </div>
+        </div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Service Instance Flow</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#C2410C"></div>Enter conf mode</div>
+            <div class="frow"><div class="fdot" style="background:#C2410C"></div>Define l3vpn instance (YANG structure)</div>
+            <div class="frow"><div class="fdot" style="background:#C2410C"></div>NSO validates input against YANG model</div>
+            <div class="frow"><div class="fdot" style="background:#C2410C"></div>Stored in Candidate CDB</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>Ready for commit 🚀</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">CLI source: <strong>Auto-generated from l3vpn YANG model</strong></span>
+    <span class="foot-tag">Storage: <strong>Candidate CDB (not committed yet)</strong></span>
+    <span class="foot-tag">Device state: <strong>Unchanged — no config pushed yet</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PHASE 6 — Service Deployment
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill p6">Phase 6</div>
+  <div class="section-title">Service Deployment</div>
+  <div class="section-sub">commit dry-run (preview) → FASTMAP generates config → commit and-quit (apply)</div>
+</div>
+
+<div class="arch-box">
+  <div class="arch-label">Architecture Map — Template + FASTMAP in Mapping Logic</div>
+  <img src="nso_images/image62.png" alt="NSO Architecture — Template mapping highlighted">
+  <p class="arch-caption">The <strong>red arrow</strong> shows the mapping flow: Service Models feed into Service Manager → <strong>Template</strong> (in Mapping Logic) generates device config → Device Models translate via NED → Device Manager pushes to devices. This is the Template-based service path.</p>
+</div>
+
+<!-- Step 10 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn6">Step 10</span>
+    <h3>commit dry-run — Preview Config Without Applying</h3>
+    <span class="cmd-pill" style="background:#F0FDFA;color:#0F766E;">commit dry-run</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;"><code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">commit dry-run</code> triggers the full NSO FASTMAP pipeline in simulation mode. It generates the exact device configuration that would be pushed — showing VRF, interface, and routing config — but applies <strong>nothing</strong> to any device. Essential for verification before deployment.</p>
+        <div class="why why-teal">
+          <p>📌 <strong>Why dry-run first:</strong> Lets engineers review the exact CLI that will be sent to each device, catch errors in the service template, and confirm the diff before committing. Zero risk — no device is touched.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Command</div>
+          <code>admin@ncs(config)# <span class="hl">commit dry-run</span>
+
+<span class="comment"># NSO runs FASTMAP in simulation mode
+# Shows what WOULD be sent to devices:</span>
+<span class="green">native {
+  device { name dist-rtr0
+    data ip vrf myVPN
+         interface GigabitEthernet5
+          ip vrf forwarding myVPN
+          ip address 192.168.1.10 255.255.255.0
+         ip route vrf myVPN 10.0.0.0 255.255.255.0 ...
+  }
+}</span>
+<span class="comment"># No changes applied to device ❌ (preview only)</span></code>
+        </div>
+      </div>
+      <div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">dry-run internal flow</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Service CDB data → Template engine</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Template injects service values</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>FASTMAP computes delta (CREATE)</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>NED translates → native CLI shown</div>
+            <div class="frow"><div class="fdot" style="background:#D97706"></div>⚠ Shown to user — NOT sent to device</div>
+          </div>
+        </div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Config previewed</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>VRF configuration</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Interface configuration (GigabitEthernet)</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Static routes (prefix + mask)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Risk: <strong>Zero — no device changes</strong></span>
+    <span class="foot-tag">FASTMAP: <strong>Simulation mode</strong></span>
+    <span class="foot-tag">Output: <strong>Preview of native device CLI</strong></span>
+  </div>
+</div>
+
+<!-- Step 11 — Architecture diagram for Python service type -->
+<div class="arch-box">
+  <div class="arch-label">Service Types — Where Template vs Python Fits in Architecture</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+    <div style="text-align:center;">
+      <img src="nso_images/image62.png" alt="Template-based service" style="border-radius:8px;border:1px solid var(--gray-200);">
+      <p style="font-size:12px;color:var(--gray-600);margin-top:6px;"><strong>Template-based</strong> — Mapping via XML template. Simple, fast to develop.</p>
+    </div>
+    <div style="text-align:center;">
+      <img src="nso_images/image64.png" alt="Python-based service" style="border-radius:8px;border:1px solid var(--gray-200);">
+      <p style="font-size:12px;color:var(--gray-600);margin-top:6px;"><strong>Python-based</strong> — Mapping via Python code. Calculations, external integrations.</p>
+    </div>
+    <div style="text-align:center;">
+      <img src="nso_images/image65.png" alt="Python + Template hybrid" style="border-radius:8px;border:1px solid var(--gray-200);">
+      <p style="font-size:12px;color:var(--gray-600);margin-top:6px;"><strong>Python + Template</strong> — Python handles logic, Template handles device mapping.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Step 11 -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn6">Step 11</span>
+    <h3>commit and-quit — Apply Service to Devices</h3>
+    <span class="cmd-pill" style="background:#F0FDFA;color:#0F766E;">commit and-quit</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;"><code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">commit and-quit</code> executes the real deployment: FASTMAP runs in execution mode, generates the device configuration delta, the NED translates it to native CLI, and NSO pushes it to the device over SSH. On success, Candidate CDB is promoted to Running CDB and FASTMAP stores a snapshot for future diff computations.</p>
+        <div class="why why-green">
+          <p>📌 <strong>FASTMAP at work:</strong> Only the delta is sent — on first deploy everything is CREATE. On re-run with same inputs, delta is empty → zero commands sent. This is idempotency.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Command + Full Deployment Flow</div>
+          <code>admin@ncs(config)# <span class="hl">commit and-quit</span>
+
+<span class="comment"># NSO executes real FASTMAP pipeline:</span>
+<span class="comment"># Service CDB → Template → Delta → NED → Device</span>
+
+<span class="green">Commit complete.</span>
+<span class="comment"># Service deployed to dist-rtr0 ✅
+# Running CDB updated
+# FASTMAP snapshot stored for next diff</span></code>
+        </div>
+      </div>
+      <div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Full FASTMAP Execution Flow</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Service data read from Candidate CDB</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Template engine generates config subtree</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>FASTMAP computes delta vs last commit</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>NED translates YANG delta → native CLI</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Config pushed to dist-rtr0 via SSH</div>
+            <div class="frow"><div class="fdot" style="background:#0F766E"></div>Device acknowledges → success</div>
+            <div class="frow"><div class="fdot" style="background:#059669"></div>Candidate → Running CDB ✅ Service live 🚀</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:10px 14px;background:var(--red-light);border-radius:var(--radius);border-left:3px solid var(--red);">
+          <p style="font-size:12.5px;color:var(--red);">⚠ <strong>Common issue:</strong> Syntactically correct config can still be rejected by the device if the physical interface doesn't exist or config conflicts. Use <code style="font-family:monospace;font-size:11px;">commit | details</code> to troubleshoot.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">FASTMAP: <strong>Real execution mode</strong></span>
+    <span class="foot-tag">Result: <strong>Candidate CDB → Running CDB</strong></span>
+    <span class="foot-tag">Rollback: <strong>Available via rollback file</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PHASE 7 — Service Types Reference
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill p7">Phase 7</div>
+  <div class="section-title">Service Types Reference</div>
+  <div class="section-sub">Template · Python · Hybrid — when to use each</div>
+</div>
+
+<div class="step">
+  <div class="step-head">
+    <span class="step-num sn7">Ref</span>
+    <h3>NSO Service Implementation Types — Comparison</h3>
+    <span class="cmd-pill" style="background:#F8FAFC;color:#334155;">Architecture Reference</span>
+  </div>
+  <div class="step-body one-col">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div style="background:var(--teal-light);border-radius:var(--radius);padding:16px;border-left:3px solid var(--teal);">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--teal);margin-bottom:8px;">Template-based (L3VPN example)</div>
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:var(--teal)"></div>Mapping via XML template</div>
+          <div class="frow"><div class="fdot" style="background:var(--teal)"></div>Easiest and fastest to develop</div>
+          <div class="frow"><div class="fdot" style="background:var(--teal)"></div>Best for straightforward config push</div>
+          <div class="frow"><div class="fdot" style="background:#D97706"></div>Limited: no calculations or IPAM</div>
+        </div>
+      </div>
+      <div style="background:var(--purple-light);border-radius:var(--radius);padding:16px;border-left:3px solid var(--purple);">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--purple);margin-bottom:8px;">Python-based</div>
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:var(--purple)"></div>Full programming flexibility</div>
+          <div class="frow"><div class="fdot" style="background:var(--purple)"></div>IP address calculations (IPAM)</div>
+          <div class="frow"><div class="fdot" style="background:var(--purple)"></div>External system integrations</div>
+          <div class="frow"><div class="fdot" style="background:#D97706"></div>More complex to develop</div>
+        </div>
+      </div>
+      <div style="background:var(--amber-light);border-radius:var(--radius);padding:16px;border-left:3px solid var(--amber);">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--amber);margin-bottom:8px;">Python + Template (Hybrid)</div>
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:var(--amber)"></div>Best of both approaches</div>
+          <div class="frow"><div class="fdot" style="background:var(--amber)"></div>Python for logic + calculations</div>
+          <div class="frow"><div class="fdot" style="background:var(--amber)"></div>Template for device config mapping</div>
+          <div class="frow"><div class="fdot" style="background:#059669"></div>Recommended for production services</div>
+        </div>
+      </div>
+    </div>
+    <div class="why why-blue">
+      <p>📌 <strong>Note:</strong> Python is the preferred language for NSO development with the best documentation and community support. Java is mostly used for NED development but is fully supported for services too. The L3VPN example in this guide is template-based — the simplest path to start with.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     COMMAND REFERENCE TABLE
+════════════════════════════════════════ -->
+<div class="sum-wrap">
+  <h2>Complete Command Reference — All Steps</h2>
+  <table class="sum">
+    <thead>
+      <tr>
+        <th style="width:55px;">Step</th>
+        <th style="width:100px;">Phase</th>
+        <th>Command</th>
+        <th>Tool / Context</th>
+        <th>Purpose</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">01</td><td>Environment</td><td><span class="mono">source $NCS_DIR/ncsrc</span></td><td>Shell</td><td>Load NSO environment variables and PATH</td></tr>
+      <tr><td class="mono">01</td><td>Environment</td><td><span class="mono">cd ~/src</span></td><td>Shell</td><td>Move to working directory</td></tr>
+      <tr><td class="mono">02</td><td>Environment</td><td><span class="mono">ncs-netsim create-network</span></td><td>ncs-netsim</td><td>Create first simulated IOS router (dist-rtr0)</td></tr>
+      <tr><td class="mono">02</td><td>Environment</td><td><span class="mono">ncs-netsim add-to-network</span></td><td>ncs-netsim</td><td>Add internet-rtr0 (IOS) and core-rtr0 (IOS-XR)</td></tr>
+      <tr><td class="mono">03</td><td>Environment</td><td><span class="mono">ncs-setup --dest nso-instance</span></td><td>ncs-setup</td><td>Create NSO runtime environment + link netsim</td></tr>
+      <tr><td class="mono">03</td><td>Environment</td><td><span class="mono">ncs-netsim start</span></td><td>ncs-netsim</td><td>Start all simulated devices</td></tr>
+      <tr><td class="mono">03</td><td>Environment</td><td><span class="mono">ncs</span></td><td>NSO daemon</td><td>Start NSO — loads packages, initializes CDB</td></tr>
+      <tr><td class="mono">04</td><td>Device Prep</td><td><span class="mono">NCS_IPC_PORT=5010 ncs_load -Fc -l -m</span></td><td>ncs_load</td><td>Push GigabitEthernet config to dist-rtr0 via IPC</td></tr>
+      <tr><td class="mono">04</td><td>Device Prep</td><td><span class="mono">NCS_IPC_PORT=5012 ncs_load -Fc -l -m</span></td><td>ncs_load</td><td>Push GigabitEthernet config to core-rtr0 via IPC</td></tr>
+      <tr><td class="mono">05</td><td>Sync</td><td><span class="mono">ncs_cli -C -u admin</span></td><td>NSO CLI</td><td>Login to NSO CLI as admin (Cisco-style mode)</td></tr>
+      <tr><td class="mono">05</td><td>Sync</td><td><span class="mono">devices sync-from</span></td><td>NSO CLI</td><td>Pull running config from all devices into CDB</td></tr>
+      <tr><td class="mono">06</td><td>Package</td><td><span class="mono">git clone CiscoDevNet/nso-lab-files</span></td><td>Shell / git</td><td>Download L3VPN service package source</td></tr>
+      <tr><td class="mono">06</td><td>Package</td><td><span class="mono">cp -r ../lab-files/.../l3vpn/ packages</span></td><td>Shell</td><td>Copy L3VPN package into NSO packages directory</td></tr>
+      <tr><td class="mono">07</td><td>Package</td><td><span class="mono">make -B -C packages/l3vpn/src/</span></td><td>ncsc compiler</td><td>Compile l3vpn.yang → l3vpn.fxs binary</td></tr>
+      <tr><td class="mono">08</td><td>Package</td><td><span class="mono">packages reload</span></td><td>NSO CLI</td><td>Load all packages — activates L3VPN service</td></tr>
+      <tr><td class="mono">09</td><td>Service</td><td><span class="mono">conf</span></td><td>NSO CLI</td><td>Enter configuration mode</td></tr>
+      <tr><td class="mono">09</td><td>Service</td><td><span class="mono">services l3vpn [name] link [id] ...</span></td><td>NSO CLI</td><td>Create L3VPN service instance (YANG-driven CLI)</td></tr>
+      <tr><td class="mono">10</td><td>Deploy</td><td><span class="mono">commit dry-run</span></td><td>NSO CLI</td><td>Preview exact device config — no changes applied</td></tr>
+      <tr><td class="mono">11</td><td>Deploy</td><td><span class="mono">commit and-quit</span></td><td>NSO CLI</td><td>Deploy service — FASTMAP → NED → device push</td></tr>
+      <tr><td class="mono">TBL</td><td>Troubleshoot</td><td><span class="mono">commit | details</span></td><td>NSO CLI</td><td>Debug detailed commit execution log</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     APPENDIX A — Actual CLI Screenshots
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill" style="background:#EFF6FF;color:#1D4ED8;">Appendix A</div>
+  <div class="section-title">Actual CLI Outputs — L3VPN Service Walkthrough</div>
+  <div class="section-sub">Real terminal screenshots from each deployment step</div>
+</div>
+
+<!-- A1: YANG tree verification -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#1D4ED8;">A1</span>
+    <h3>Verify L3VPN YANG Model Tree Structure</h3>
+    <span class="cmd-pill" style="background:#EFF6FF;color:#1D4ED8;">yanger -f tree</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Shows</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Running <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">yanger -f tree</code> on the compiled YANG file displays the full hierarchical structure of the service model. This confirms exactly what fields the engineer must supply when creating a service instance — and what types they must be.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Command</div>
+          <code>yanger -f tree packages/l3vpn/src/yang/l3vpn.yang \
+  | sed -n -e '/l3vpn/p' -e '/link/,$p'</code>
+        </div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:14px;margin-top:12px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Model Fields Revealed</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><strong>vpn-name</strong> — key (string) for the VPN</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><strong>link-id</strong> — uint32, key for each link</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><strong>pe-device</strong> — leafref → /ncs:devices/device/name</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><strong>interface</strong> — string (interface number)</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><strong>routing-protocol</strong> — enumeration (static)</div>
+            <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><strong>static-route prefix + mask</strong> — inet:ipv4-address</div>
+          </div>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">yanger tree output — L3VPN YANG model</div>
+        <img src="nso_images/image11.png" alt="yanger tree output for l3vpn.yang">
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Tool: <strong>yanger (YANG viewer)</strong></span>
+    <span class="foot-tag">Purpose: <strong>Inspect YANG model before configuring</strong></span>
+  </div>
+</div>
+
+<!-- A2: Actual service instance creation + show configuration -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#15803D;">A2</span>
+    <h3>Create L3VPN Service Instance — Full CLI + show configuration</h3>
+    <span class="cmd-pill" style="background:#F0FDF4;color:#15803D;">services l3vpn · show configuration</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Shows</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">The full CLI command sequence to create the L3VPN service instance named <strong>test-vpn</strong>. After entering all parameters, <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">show configuration</code> displays exactly what is staged in the Candidate CDB — before any commit. Every field maps directly to a leaf in the YANG model.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Complete instance creation commands</div>
+          <code><span class="hl">ncs_cli -C -u admin</span>
+admin@ncs# <span class="hl">config</span>
+admin@ncs(config)# <span class="hl">services l3vpn test-vpn</span> \
+  vpn-id 10001 customer Cisco link 1
+admin@ncs(config-link-1)# interface 5 \
+  link-name branch-office \
+  pe-device dist-rtr0 \
+  routing-protocol static \
+  static-route 10.0.0.0 mask 255.255.255.0
+admin@ncs(config-static-route-10.0.0.0)# top
+admin@ncs(config)# <span class="hl">show configuration</span></code>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">Terminal — service creation + show configuration</div>
+        <img src="nso_images/image12.png" alt="L3VPN service instance creation and show configuration">
+        <div class="why why-blue" style="margin-top:10px;">
+          <p>📌 <strong>show configuration</strong> shows the Candidate CDB state — what will be committed. Running CDB is still unchanged at this point. No device has been touched yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">State: <strong>Candidate CDB only — not committed</strong></span>
+    <span class="foot-tag">VPN ID: <strong>10001</strong></span>
+    <span class="foot-tag">Device: <strong>dist-rtr0 · Interface: GigabitEthernet5</strong></span>
+  </div>
+</div>
+
+<!-- A3: commit dry-run full output -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#0F766E;">A3</span>
+    <h3>commit dry-run — Full Generated Config Preview</h3>
+    <span class="cmd-pill" style="background:#F0FDFA;color:#0F766E;">commit dry-run</span>
+  </div>
+  <div class="step-body one-col">
+    <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;margin-bottom:14px;">The two screenshots below show the complete output of <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">commit dry-run</code>. NSO's FASTMAP engine has run in simulation mode and produced the full device configuration that would be pushed to <strong>dist-rtr0</strong>. The <strong>+</strong> prefix on each line means CREATE — these lines will be added to the device.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">dry-run output — VRF + Route config (dist-rtr0)</div>
+          <img src="nso_images/image13.png" alt="commit dry-run VRF output">
+        </div>
+        <div style="margin-top:8px;background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:12px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:6px;">What + means in dry-run</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#059669;"></div><strong>+</strong> = CREATE — new config line to be added</div>
+            <div class="frow"><div class="fdot" style="background:#DC2626;"></div><strong>-</strong> = DELETE — existing line to be removed</div>
+            <div class="frow"><div class="fdot" style="background:#D97706;"></div>(no prefix) = UNCHANGED — already on device</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">dry-run output — Interface + Services (continued)</div>
+          <img src="nso_images/image14.png" alt="commit dry-run interface output">
+        </div>
+        <div class="why why-amber" style="margin-top:8px;">
+          <p>📌 The <strong>-</strong> lines show the old interface description being replaced. The <strong>+</strong> lines show new VRF forwarding config and updated IP address — these are MODIFY operations computed by FASTMAP.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">FASTMAP mode: <strong>Simulation (dry-run)</strong></span>
+    <span class="foot-tag">+ lines: <strong>CREATE operations</strong></span>
+    <span class="foot-tag">- lines: <strong>DELETE / replace operations</strong></span>
+    <span class="foot-tag">Applied to device: <strong>NO ❌</strong></span>
+  </div>
+</div>
+
+<!-- A4: commit and-quit success -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#0F766E;">A4</span>
+    <h3>commit and-quit — Service Deployed Successfully</h3>
+    <span class="cmd-pill" style="background:#F0FDFA;color:#0F766E;">commit and-quit → Commit complete</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Shows</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">After verifying the dry-run output, <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">commit and-quit</code> executes the real deployment. NSO displays the complete service instance data stored in the Running CDB (all + lines now applied), followed by <strong>"Commit complete."</strong> — confirming the config was pushed to dist-rtr0 and the transaction sealed.</p>
+        <div class="why why-green">
+          <p>📌 <strong>After commit:</strong> Candidate CDB promoted to Running CDB. FASTMAP stores snapshot of pushed NED YANG config. Any future change or deletion is computed relative to this exact state.</p>
+        </div>
+        <div class="cmd-block" style="margin-top:12px;">
+          <div class="cmd-label">Final commit command</div>
+          <code>admin@ncs(config)# <span class="hl">commit and-quit</span>
+<span class="green">Commit complete.</span>
+admin@ncs#</code>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">Terminal — commit and-quit → Commit complete</div>
+        <img src="nso_images/image15.png" alt="commit and-quit Commit complete">
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Result: <strong>Commit complete ✅</strong></span>
+    <span class="foot-tag">CDB state: <strong>Candidate → Running (promoted)</strong></span>
+    <span class="foot-tag">Device: <strong>dist-rtr0 config updated</strong></span>
+  </div>
+</div>
+
+<!-- A5: Verify deployed config on device -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#A16207;">A5</span>
+    <h3>Verify Deployed Config on Device</h3>
+    <span class="cmd-pill" style="background:#FEF9C3;color:#A16207;">show running-config devices device dist-rtr0 config</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Shows</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">After a successful commit, you can verify the deployed configuration by reading it back from NSO's CDB — which mirrors what is live on the device. This shows the VRF definition, route-target, ip route for the VPN, and the GigabitEthernet interface with VRF forwarding — exactly what dry-run predicted.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Verification command</div>
+          <code>admin@ncs# <span class="hl">show running-config devices device \
+  dist-rtr0 config</span> | nomore</code>
+        </div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:12px;margin-top:10px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:6px;">What the output confirms</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#A16207;"></div><strong>vrf definition vpn10001</strong> — VPN created</div>
+            <div class="frow"><div class="fdot" style="background:#A16207;"></div><strong>rd 1:10001</strong> — Route Distinguisher set</div>
+            <div class="frow"><div class="fdot" style="background:#A16207;"></div><strong>route-target export/import 1:10001</strong></div>
+            <div class="frow"><div class="fdot" style="background:#A16207;"></div><strong>GigabitEthernet5</strong> — VRF forwarding active</div>
+            <div class="frow"><div class="fdot" style="background:#059669;"></div>ip route vrf vpn10001 — static route live ✅</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">Running config on dist-rtr0 — VRF + routing verified</div>
+          <img src="nso_images/image16.png" alt="show running-config dist-rtr0">
+        </div>
+        <div class="screenshot" style="margin-top:10px;">
+          <div class="ss-label">Continued — interface + BGP + routing config</div>
+          <img src="nso_images/image17.png" alt="show running-config dist-rtr0 continued">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Command: <strong>show running-config devices device [name] config</strong></span>
+    <span class="foot-tag">Source: <strong>NSO CDB (mirrors device)</strong></span>
+  </div>
+</div>
+
+<!-- A6: YANG validation errors -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#DC2626;">A6</span>
+    <h3>YANG Validation Errors — What Bad Input Looks Like</h3>
+    <span class="cmd-pill" style="background:#FEE2E2;color:#DC2626;">syntax error · leafref fail</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Shows</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">When input violates the YANG model, NSO rejects it immediately with a precise error pointing to the exact field. Two error types shown: <strong>leafref failure</strong> (device <code style="font-family:monospace;font-size:11px;">router1</code> does not exist in CDB) and <strong>type error</strong> (IP address <code style="font-family:monospace;font-size:11px;">10.300.1.0</code> is not a valid ipv4-address).</p>
+        <div class="why why-red">
+          <p>📌 <strong>Key benefit:</strong> YANG validation catches errors at input time — before any device is contacted. No partial configuration is ever pushed. The transaction is aborted cleanly with no side effects.</p>
+        </div>
+        <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:12px;margin-top:10px;">
+          <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:6px;">Two Error Types Shown</div>
+          <div class="flow">
+            <div class="frow"><div class="fdot" style="background:#DC2626;"></div><strong>Leafref fail:</strong> pe-device router1 → not in /ncs:devices/device</div>
+            <div class="frow"><div class="fdot" style="background:#DC2626;"></div><strong>Type error:</strong> 10.300.1.0 → not a valid inet:ipv4-address</div>
+            <div class="frow"><div class="fdot" style="background:#059669;"></div>Both: caught at validation, no device touched</div>
+          </div>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">Terminal — YANG validation errors (leafref + type)</div>
+        <img src="nso_images/image19.png" alt="YANG validation errors">
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Validation: <strong>YANG schema enforcement at input time</strong></span>
+    <span class="foot-tag">Device impact: <strong>Zero — transaction aborted before any push</strong></span>
+  </div>
+</div>
+
+<!-- A7: Service modify and delete (FASTMAP idempotency) -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#7C3AED;">A7</span>
+    <h3>Service Modify + Delete — FASTMAP Idempotency in Action</h3>
+    <span class="cmd-pill" style="background:#EDE9FE;color:#7C3AED;">no services l3vpn · commit dry-run (DELETE)</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Shows</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">When a service instance is deleted with <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">no services l3vpn test-vpn</code> and followed by <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">commit dry-run</code>, FASTMAP computes the exact <strong>reverse</strong> of what was deployed — all + lines become - lines. NSO will remove exactly what it added, nothing more.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Delete service + verify reversal</div>
+          <code><span class="comment"># Delete the service instance</span>
+<span class="hl">no services l3vpn test-vpn</span>
+
+<span class="comment"># Preview what will be removed</span>
+<span class="hl">commit dry-run</span>
+
+<span class="comment"># All previously-added config now shows as - (DELETE)
+# FASTMAP uses stored snapshot to compute reversal</span></code>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">dry-run showing DELETE operations (- lines) on service removal</div>
+        <img src="nso_images/image20.png" alt="Service delete dry-run showing minus lines">
+        <div class="why why-purple" style="margin-top:8px;">
+          <p>📌 <strong>FASTMAP inverse:</strong> NSO stored a snapshot at commit time. On delete, FASTMAP computes the exact inverse of the original CREATE. Only NSO-managed config is removed — pre-existing config is untouched.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Operation: <strong>DELETE (inverse of CREATE)</strong></span>
+    <span class="foot-tag">FASTMAP: <strong>Uses stored snapshot for reversal</strong></span>
+    <span class="foot-tag">Safety: <strong>Only NSO-managed lines removed</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APPENDIX B — Create Template Service From Scratch
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill" style="background:#F0FDF4;color:#15803D;">Appendix B</div>
+  <div class="section-title">Creating a Template-Based Service From Scratch — Loopback Example</div>
+  <div class="section-sub">ncs-make-package · Write YANG · Write XML template · Compile · Deploy</div>
+</div>
+
+<div class="arch-box">
+  <div class="arch-label">What You Build — Loopback Service Package Structure</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+    <div>
+      <img src="nso_images/image41.png" alt="loopback package tree structure" style="border-radius:8px;border:1px solid var(--gray-200);">
+      <p class="arch-caption" style="margin-top:8px;">The <code style="font-family:monospace;font-size:11px;">ncs-make-package --service-skeleton template loopback</code> command creates this complete folder structure — including a skeleton YANG model, XML template, Makefile, and test directory. You then fill in the YANG and XML.</p>
+    </div>
+    <div style="background:var(--gray-50);border:var(--border);border-radius:var(--radius);padding:16px;">
+      <div style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:10px;">Loopback Service — What It Does</div>
+      <p style="font-size:13px;color:var(--gray-600);line-height:1.7;">Creates a loopback interface on a target device with a specified IP address and interface number. A minimal, clean example to understand how YANG fields map to XML template variables and then to device CLI commands.</p>
+      <div style="margin-top:12px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">Service inputs (from YANG)</div>
+      <div class="flow">
+        <div class="frow"><div class="fdot" style="background:#15803D;"></div><strong>name</strong> — service instance identifier</div>
+        <div class="frow"><div class="fdot" style="background:#15803D;"></div><strong>device</strong> — target device name</div>
+        <div class="frow"><div class="fdot" style="background:#15803D;"></div><strong>ip-address</strong> — loopback IP address</div>
+        <div class="frow"><div class="fdot" style="background:#15803D;"></div><strong>loopback-intf</strong> — loopback interface number (uint32)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- B1: ncs-make-package -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#15803D;">B1</span>
+    <h3>Create Package Skeleton</h3>
+    <span class="cmd-pill" style="background:#F0FDF4;color:#15803D;">ncs-make-package --service-skeleton template loopback</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Generates a complete NSO service package skeleton in template mode — the simplest service type. The skeleton includes a pre-populated YANG file, XML template, and Makefile. The developer only needs to fill in the service-specific fields.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Commands</div>
+          <code><span class="comment"># In packages/ directory</span>
+<span class="hl">ncs-make-package --service-skeleton template loopback</span>
+cd loopback
+tree</code>
+        </div>
+        <div class="why why-blue" style="margin-top:10px;">
+          <p>📌 <strong>Skeleton includes:</strong> loopback.yang (skeleton YANG model), loopback-template.xml (skeleton XML template), Makefile (pre-configured to call ncsc compiler), and test directory for automated testing.</p>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">Package skeleton folder structure</div>
+        <img src="nso_images/image41.png" alt="ncs-make-package skeleton tree output">
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Output: <strong>loopback/ package skeleton</strong></span>
+    <span class="foot-tag">Service type: <strong>Template-based (simplest)</strong></span>
+  </div>
+</div>
+
+<!-- B2: Write YANG model -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#15803D;">B2</span>
+    <h3>Write the YANG Service Model</h3>
+    <span class="cmd-pill" style="background:#F0FDF4;color:#15803D;">src/yang/loopback.yang</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">The developer writes the YANG model defining the service schema. The key line is <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">ncs:servicepoint "loopback";</code> — this is the bridge between the data model and the Python/template execution. Every leaf defined here becomes a CLI parameter the engineer can configure.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Key YANG structure — loopback.yang</div>
+          <code>list loopback {
+  key name;
+  uses ncs:service-data;
+  <span class="hl">ncs:servicepoint "loopback";</span>  <span class="comment">← bridge to logic</span>
+
+  leaf name         { type string; }
+  leaf device       { type string; }
+  leaf ip-address   { type string; }
+  leaf loopback-intf { type uint32; }
+}</code>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">loopback.yang — full YANG model source</div>
+        <img src="nso_images/image42.png" alt="loopback.yang YANG model">
+        <div class="why why-purple" style="margin-top:10px;">
+          <p>📌 <code style="font-family:monospace;font-size:11px;">uses ncs:service-data</code> imports NSO's standard service metadata (FASTMAP hooks, rollback support). <code style="font-family:monospace;font-size:11px;">ncs:servicepoint "loopback"</code> names the trigger that will fire the template or Python handler.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">File: <strong>src/yang/loopback.yang</strong></span>
+    <span class="foot-tag">Key line: <strong>ncs:servicepoint "loopback"</strong></span>
+  </div>
+</div>
+
+<!-- B3: Compile + reload loopback -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#15803D;">B3</span>
+    <h3>Compile Loopback YANG + Reload into NSO</h3>
+    <span class="cmd-pill" style="background:#F0FDF4;color:#15803D;">make -C .../loopback/src · packages reload</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Same compile + reload process as the L3VPN package. The Makefile calls <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">ncsc</code> to compile <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">loopback.yang → loopback.fxs</code>, then <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">packages reload</code> activates the new service in NSO's schema store.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Commands</div>
+          <code><span class="comment"># Compile from loopback directory</span>
+<span class="hl">make -C ~/src/nso-instance/packages/loopback/src</span>
+<span class="comment"># Compiles loopback.yang → loopback.fxs</span>
+
+<span class="comment"># Login and reload</span>
+ncs_cli -C -u admin
+admin@ncs# <span class="hl">packages reload</span></code>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">make compile + ncs_cli login output</div>
+        <img src="nso_images/image44.png" alt="make compile and ncs_cli login for loopback">
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Compiler: <strong>ncsc</strong></span>
+    <span class="foot-tag">Output: <strong>loopback.fxs</strong></span>
+    <span class="foot-tag">After reload: <strong>loopback service available in CLI</strong></span>
+  </div>
+</div>
+
+<!-- B4: Deploy loopback service with XML display -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#15803D;">B4</span>
+    <h3>Deploy Loopback Service + Verify via XML Output</h3>
+    <span class="cmd-pill" style="background:#F0FDF4;color:#15803D;">commit dry-run outformat xml · show … display xml</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Does</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">Creates Loopback100 on two devices simultaneously — <strong>dist-rtr0</strong> (IOS) and <strong>core-rtr0</strong> (IOS-XR). Using <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">commit dry-run outformat xml</code> shows the config as YANG XML — revealing the NED YANG paths used by the template. The IOS-XR device uses different XML namespace (<code style="font-family:monospace;font-size:11px;">tail-f/ned/cisco-ios-xr</code>) vs IOS.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">Deploy to two devices + XML dry-run</div>
+          <code>admin@ncs(config)# devices device dist-rtr0 \
+  config interface Loopback 100
+admin@ncs(config-if)# ip address 192.168.10.20 \
+  255.255.255.255 / top
+
+admin@ncs(config)# devices device core-rtr0 \
+  config interface Loopback 100
+admin@ncs(config-if)# ipv4 address 192.168.10.20 \
+  255.255.255.255 / top
+
+admin@ncs(config)# <span class="hl">commit dry-run outformat xml</span></code>
+        </div>
+      </div>
+      <div>
+        <div class="screenshot">
+          <div class="ss-label">XML dry-run — NED YANG paths for IOS-XR Loopback</div>
+          <img src="nso_images/image45.png" alt="commit dry-run outformat xml loopback">
+        </div>
+        <div class="why why-teal" style="margin-top:10px;">
+          <p>📌 <strong>outformat xml</strong> shows the YANG XML that NSO will push — using NED YANG namespace. This is exactly what lives in the NED YANG config tree before the NED translates it to CLI. Useful for debugging template variable bindings.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">outformat xml: <strong>Shows NED YANG tree (not CLI)</strong></span>
+    <span class="foot-tag">IOS namespace: <strong>tail-f/ned/cisco-ios</strong></span>
+    <span class="foot-tag">IOS-XR namespace: <strong>tail-f/ned/cisco-ios-xr</strong></span>
+  </div>
+</div>
+
+<!-- B5: Verify loopback via XML display -->
+<div class="step">
+  <div class="step-head">
+    <span class="step-num" style="background:#15803D;">B5</span>
+    <h3>Verify Deployed Loopback — display xml</h3>
+    <span class="cmd-pill" style="background:#F0FDF4;color:#15803D;">show running-config … | display xml</span>
+  </div>
+  <div class="step-body">
+    <div class="two-col">
+      <div>
+        <h4 style="font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray-400);margin-bottom:8px;">What This Shows</h4>
+        <p style="font-size:13.5px;color:var(--gray-600);line-height:1.7;">After committing, the deployed config can be viewed in raw XML format using <code style="font-family:monospace;font-size:12px;background:var(--gray-100);padding:2px 5px;border-radius:3px;">| display xml</code>. This reveals the exact NED YANG XML structure stored in the CDB for core-rtr0's GigabitEthernet interface — showing namespace, element hierarchy, and values exactly as NSO stores them internally.</p>
+        <div class="cmd-block" style="margin-top:10px;">
+          <div class="cmd-label">View config in XML format</div>
+          <code>admin@ncs# show running-config \
+  <span class="hl">devices device core-rtr0 config</span> \
+  interface GigabitEthernet 0/0/0/1 \
+  <span class="hl">| display xml</span></code>
+        </div>
+        <div class="why why-blue" style="margin-top:10px;">
+          <p>📌 <strong>Why display xml:</strong> The XML format reveals the exact YANG paths and namespaces used. This is critical when developing XML templates — you can see the exact element structure the template must produce.</p>
+        </div>
+      </div>
+      <div class="screenshot">
+        <div class="ss-label">Config in XML format — NED YANG structure for core-rtr0</div>
+        <img src="nso_images/image35.png" alt="display xml output for core-rtr0 GigabitEthernet">
+      </div>
+    </div>
+  </div>
+  <div class="step-foot">
+    <span class="foot-tag">Command suffix: <strong>| display xml</strong></span>
+    <span class="foot-tag">Use: <strong>Debug template XML path construction</strong></span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APPENDIX C — End-to-End Flow Summary
+════════════════════════════════════════ -->
+<div class="section-hdr">
+  <div class="phase-pill" style="background:#F8FAFC;color:#334155;">Appendix C</div>
+  <div class="section-title">End-to-End Flow — How All Steps Connect</div>
+  <div class="section-sub">From blank environment to live service on device</div>
+</div>
+
+<div style="background:white;border:var(--border);border-radius:var(--radius-lg);padding:28px;margin-bottom:20px;">
+  <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gray-400);margin-bottom:20px;">Complete NSO Service Deployment — All Steps in Order</div>
+  <div style="display:flex;flex-direction:column;gap:0;">
+
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;">
+      <div style="background:#1D4ED8;color:white;padding:12px 14px;border-radius:8px 0 0 0;font-size:11px;font-weight:600;display:flex;align-items:center;">Phase 1<br>Environment</div>
+      <div style="border:1px solid var(--gray-200);border-left:none;padding:12px 16px;border-radius:0 8px 0 0;">
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><code style="font-family:monospace;font-size:11px;">source $NCS_DIR/ncsrc</code> → Load environment</div>
+          <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><code style="font-family:monospace;font-size:11px;">ncs-netsim create-network / add-to-network</code> → Create 3 virtual routers</div>
+          <div class="frow"><div class="fdot" style="background:#1D4ED8;"></div><code style="font-family:monospace;font-size:11px;">ncs-setup</code> → Build NSO runtime → <code style="font-family:monospace;font-size:11px;">ncs-netsim start</code> → <code style="font-family:monospace;font-size:11px;">ncs</code></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;">
+      <div style="background:#15803D;color:white;padding:12px 14px;font-size:11px;font-weight:600;display:flex;align-items:center;">Phase 2<br>Device Prep</div>
+      <div style="border:1px solid var(--gray-200);border-left:none;border-top:none;padding:12px 16px;">
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:#15803D;"></div><code style="font-family:monospace;font-size:11px;">NCS_IPC_PORT=5010 ncs_load -Fc -l -m</code> → Push GigabitEthernet config to each device via IPC</div>
+          <div class="frow"><div class="fdot" style="background:#15803D;"></div>Bypasses NSO service logic — direct device injection</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;">
+      <div style="background:#A16207;color:white;padding:12px 14px;font-size:11px;font-weight:600;display:flex;align-items:center;">Phase 3<br>Sync</div>
+      <div style="border:1px solid var(--gray-200);border-left:none;border-top:none;padding:12px 16px;">
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:#A16207;"></div><code style="font-family:monospace;font-size:11px;">ncs_cli -C -u admin</code> → Login to NSO</div>
+          <div class="frow"><div class="fdot" style="background:#A16207;"></div><code style="font-family:monospace;font-size:11px;">devices sync-from</code> → Pull running config → CDB = device reality</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;">
+      <div style="background:#86198F;color:white;padding:12px 14px;font-size:11px;font-weight:600;display:flex;align-items:center;">Phase 4<br>Package</div>
+      <div style="border:1px solid var(--gray-200);border-left:none;border-top:none;padding:12px 16px;">
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:#86198F;"></div><code style="font-family:monospace;font-size:11px;">git clone</code> + <code style="font-family:monospace;font-size:11px;">cp -r l3vpn/ packages/</code> → L3VPN package in packages dir</div>
+          <div class="frow"><div class="fdot" style="background:#86198F;"></div><code style="font-family:monospace;font-size:11px;">make -B -C packages/l3vpn/src/</code> → Compile l3vpn.yang → l3vpn.fxs</div>
+          <div class="frow"><div class="fdot" style="background:#86198F;"></div><code style="font-family:monospace;font-size:11px;">packages reload</code> → L3VPN schema registered in NSO</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;">
+      <div style="background:#C2410C;color:white;padding:12px 14px;font-size:11px;font-weight:600;display:flex;align-items:center;">Phase 5<br>Service Create</div>
+      <div style="border:1px solid var(--gray-200);border-left:none;border-top:none;padding:12px 16px;">
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:#C2410C;"></div><code style="font-family:monospace;font-size:11px;">conf</code> → Enter config mode</div>
+          <div class="frow"><div class="fdot" style="background:#C2410C;"></div><code style="font-family:monospace;font-size:11px;">services l3vpn test-vpn ...</code> → Define service instance (YANG-driven CLI)</div>
+          <div class="frow"><div class="fdot" style="background:#C2410C;"></div>YANG validation → Store in Candidate CDB (Running CDB unchanged)</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 1fr;gap:0;align-items:stretch;">
+      <div style="background:#0F766E;color:white;padding:12px 14px;border-radius:0 0 0 8px;font-size:11px;font-weight:600;display:flex;align-items:center;">Phase 6<br>Deploy</div>
+      <div style="border:1px solid var(--gray-200);border-left:none;border-top:none;padding:12px 16px;border-radius:0 0 8px 0;">
+        <div class="flow">
+          <div class="frow"><div class="fdot" style="background:#0F766E;"></div><code style="font-family:monospace;font-size:11px;">commit dry-run</code> → FASTMAP simulation → Review +/- config changes</div>
+          <div class="frow"><div class="fdot" style="background:#0F766E;"></div><code style="font-family:monospace;font-size:11px;">commit and-quit</code> → FASTMAP execution → NED translation → Push to device</div>
+          <div class="frow"><div class="fdot" style="background:#059669;"></div>Device acknowledges → Candidate → Running CDB → FASTMAP snapshot stored ✅</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Complete Command Reference Table -->
+<div class="sum-wrap">
+  <h2>Complete Command Reference — All Steps</h2>
+  <table class="sum">
+    <thead>
+      <tr>
+        <th style="width:55px;">Step</th>
+        <th style="width:100px;">Phase</th>
+        <th>Command</th>
+        <th>Tool</th>
+        <th>Purpose</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">01</td><td>Environment</td><td><span class="mono">source $NCS_DIR/ncsrc</span></td><td>Shell</td><td>Load NSO environment — must run in every new terminal</td></tr>
+      <tr><td class="mono">02</td><td>Environment</td><td><span class="mono">ncs-netsim create-network $NCS_DIR/packages/neds/cisco-ios-cli-3.0 1 dist-rtr</span></td><td>ncs-netsim</td><td>Create first IOS simulated router</td></tr>
+      <tr><td class="mono">02</td><td>Environment</td><td><span class="mono">ncs-netsim add-to-network … cisco-iosxr-cli-3.5 1 core-rtr</span></td><td>ncs-netsim</td><td>Add IOS-XR router to simulation</td></tr>
+      <tr><td class="mono">03</td><td>Environment</td><td><span class="mono">ncs-setup --dest nso-instance --netsim-dir nso-instance/netsim</span></td><td>ncs-setup</td><td>Create NSO runtime directory + link netsim devices</td></tr>
+      <tr><td class="mono">03</td><td>Environment</td><td><span class="mono">ncs-netsim start</span></td><td>ncs-netsim</td><td>Start all simulated devices (must precede ncs)</td></tr>
+      <tr><td class="mono">03</td><td>Environment</td><td><span class="mono">ncs</span></td><td>NSO daemon</td><td>Start NSO — loads packages, initialises CDB</td></tr>
+      <tr><td class="mono">04</td><td>Device Prep</td><td><span class="mono">NCS_IPC_PORT=5010 ncs_load -Fc -l -m &lt;&lt; EOF … EOF</span></td><td>ncs_load</td><td>Inject GigabitEthernet config into IOS device via IPC</td></tr>
+      <tr><td class="mono">04</td><td>Device Prep</td><td><span class="mono">NCS_IPC_PORT=5012 ncs_load -Fc -l -m &lt;&lt; EOF … EOF</span></td><td>ncs_load</td><td>Inject GigabitEthernet config into IOS-XR device via IPC</td></tr>
+      <tr><td class="mono">05</td><td>Sync</td><td><span class="mono">ncs_cli -C -u admin</span></td><td>NSO CLI</td><td>Login to NSO in Cisco-style mode as admin</td></tr>
+      <tr><td class="mono">05</td><td>Sync</td><td><span class="mono">devices sync-from</span></td><td>NSO CLI</td><td>Pull device running config into CDB — sync NSO ↔ device</td></tr>
+      <tr><td class="mono">06</td><td>Package</td><td><span class="mono">git clone https://github.com/CiscoDevNet/nso-lab-files.git ../lab-files/</span></td><td>git</td><td>Download L3VPN service package source files</td></tr>
+      <tr><td class="mono">06</td><td>Package</td><td><span class="mono">cp -r ../lab-files/service-dev/packages/l3vpn/ packages</span></td><td>Shell</td><td>Copy L3VPN package into NSO packages directory</td></tr>
+      <tr><td class="mono">07</td><td>Package</td><td><span class="mono">make -B -C packages/l3vpn/src/</span></td><td>ncsc (via make)</td><td>Compile l3vpn.yang → l3vpn.fxs binary</td></tr>
+      <tr><td class="mono">08</td><td>Package</td><td><span class="mono">packages reload</span></td><td>NSO CLI</td><td>Activate all packages — L3VPN schema registered</td></tr>
+      <tr><td class="mono">09</td><td>Service</td><td><span class="mono">yanger -f tree packages/l3vpn/src/yang/l3vpn.yang</span></td><td>yanger</td><td>Inspect L3VPN YANG model tree before configuring</td></tr>
+      <tr><td class="mono">09</td><td>Service</td><td><span class="mono">conf</span></td><td>NSO CLI</td><td>Enter configuration mode</td></tr>
+      <tr><td class="mono">09</td><td>Service</td><td><span class="mono">services l3vpn test-vpn vpn-id 10001 customer Cisco link 1 …</span></td><td>NSO CLI</td><td>Create L3VPN service instance (YANG-validated)</td></tr>
+      <tr><td class="mono">09</td><td>Service</td><td><span class="mono">show configuration</span></td><td>NSO CLI</td><td>Preview Candidate CDB before commit</td></tr>
+      <tr><td class="mono">10</td><td>Deploy</td><td><span class="mono">commit dry-run</span></td><td>NSO CLI</td><td>Simulate FASTMAP — show +/- config diff, no device change</td></tr>
+      <tr><td class="mono">10</td><td>Deploy</td><td><span class="mono">commit dry-run outformat xml</span></td><td>NSO CLI</td><td>Show planned config as YANG XML (NED namespace visible)</td></tr>
+      <tr><td class="mono">11</td><td>Deploy</td><td><span class="mono">commit and-quit</span></td><td>NSO CLI</td><td>Execute deployment — FASTMAP → NED → device push → commit</td></tr>
+      <tr><td class="mono">VFY</td><td>Verify</td><td><span class="mono">show running-config devices device [name] config | nomore</span></td><td>NSO CLI</td><td>Verify deployed config from NSO CDB (mirrors device)</td></tr>
+      <tr><td class="mono">VFY</td><td>Verify</td><td><span class="mono">show running-config devices device [name] config … | display xml</span></td><td>NSO CLI</td><td>View config as NED YANG XML — debug template paths</td></tr>
+      <tr><td class="mono">DEL</td><td>Delete</td><td><span class="mono">no services l3vpn test-vpn</span></td><td>NSO CLI</td><td>Stage service deletion — FASTMAP computes reverse delta</td></tr>
+      <tr><td class="mono">TBL</td><td>Troubleshoot</td><td><span class="mono">commit | details</span></td><td>NSO CLI</td><td>Detailed commit execution log for troubleshooting</td></tr>
+      <tr><td class="mono">NEW</td><td>New Package</td><td><span class="mono">ncs-make-package --service-skeleton template loopback</span></td><td>ncs-make-package</td><td>Generate template-based service package skeleton</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Footer -->
+<div style="margin-top:44px;padding-top:20px;border-top:var(--border);text-align:center;">
+  <p style="font-size:12px;color:var(--gray-400);">Cisco NSO L3VPN Service Deployment LLD · NSO 6.4.1 · netsim · YANG / FXS · FASTMAP · Template-based Service · NED (cisco-ios + cisco-iosxr)</p>
+  <p style="font-size:11px;color:var(--gray-400);margin-top:4px;">Reference: <a href="https://developer.cisco.com/learning/tracks/get_started_with_nso/nso-service-dev/service-dev-101/introduction/" style="color:#2D82E0;">Cisco DevNet — Introduction to NSO Service Development</a></p>
+</div>
+
+</div><!-- /page -->
+</body>
+</html>
